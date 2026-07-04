@@ -121,7 +121,7 @@
           "x": 270,
           "y": 60,
           "type": "file",
-          "path": "resources/mac/Uninstall BitTracker.command"
+          "path": "resources/mac/Uninstall BitTracker.app"
         }
       ]
     },

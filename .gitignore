@@ -31,6 +31,9 @@ release
 # electron-builder
 builder-effective-config.yaml
 
+# Compiled uninstaller (build artifact — source is uninstall.applescript)
+resources/mac/Uninstall BitTracker.app
+
 # OS
 .DS_Store
 ._*
