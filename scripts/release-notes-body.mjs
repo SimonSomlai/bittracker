@@ -35,9 +35,9 @@ Look for \`TeamIdentifier=M6349D88KR\` in the output.
 
 ### What this proves
 
-- The file you downloaded matches the checksum published for this release.
+- The file you downloaded is the one Github CI built in this release.
 - The app reports the same git commit as the release tag.
-- macOS Gatekeeper accepts the signed, notarized build.
+- macOS Gatekeeper accepts the signed, notarized build connected to my Apple Developer account.
 
-We do **not** claim byte-for-byte reproducible builds from source. Build from source is always available.
+We do **not** claim byte-for-byte reproducible builds from source. For this, building from source is always available.
 `);
