@@ -1,0 +1,52 @@
+sequenceDiagram
+    actor User
+    participant App as BitTracker App
+    participant HW as HW Wallet SDK
+    participant API as Blockchain API
+    participant DB as Encrypted SQLite
+
+    rect rgb(238, 242, 255)
+        Note over User, DB: Password & setup
+        User->>App: Set password (first launch) or enter password
+        App->>App: Verify hash (Argon2) and derive DB key
+        alt First setup
+            App->>DB: Create encrypted database
+        else Unlock
+            App->>DB: Open database with derived key
+        end
+        DB-->>App: Session ready
+        App-->>User: Dashboard unlocked
+    end
+
+    rect rgb(245, 243, 255)
+        Note over User, DB: Add wallet (xpub)
+        User->>App: Add wallet
+        alt Hardware wallet (Ledger / Trezor)
+            User->>App: Connect device
+            App->>HW: Request xpub (getPublicKey)
+            HW-->>User: Approve on device
+            User-->>HW: Confirm export
+            HW-->>App: Extended public key (xpub)
+        else Manual
+            User->>App: Paste xpub
+        end
+        App->>App: Validate xpub (BIP32)
+        App->>DB: Store encrypted xpub and metadata
+        DB-->>App: OK
+        App-->>User: Wallet added
+    end
+
+    rect rgb(255, 247, 237)
+        Note over User, DB: Transaction sync
+        User->>App: Sync wallets
+        App->>DB: Read wallet xpubs
+        DB-->>App: Decrypted xpubs
+        App->>App: Derive receive and change addresses
+        loop Address batches
+            App->>API: Query address history (Esplora)
+            API-->>App: Transactions and UTXOs
+        end
+        App->>DB: Store transactions and balances
+        DB-->>App: OK
+        App-->>User: Sync complete
+    end

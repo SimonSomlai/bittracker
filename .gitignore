@@ -1,0 +1,38 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build output
+dist
+dist-electron
+build
+release
+
+# Environment & secrets
+.env
+.env.*
+!.env.signing.example
+.env.signing
+
+# Signing certificates & keys
+*.p12
+*.pem
+*.key
+*.cer
+
+# Local databases
+*.db
+
+# Logs & caches
+*.log
+*.tsbuildinfo
+.cache
+
+# electron-builder
+builder-effective-config.yaml
+
+# OS
+.DS_Store
+._*
+.AppleDouble
+Thumbs.db
