@@ -39,7 +39,5 @@ Look for \`TeamIdentifier=M6349D88KR\` in the output.
 - The app reports the same git commit as the release tag.
 - macOS Gatekeeper accepts the signed, notarized build.
 
-We do **not** claim byte-for-byte reproducible builds from source (Electron + native modules make that impractical).
-
-Full verification guide: [docs/RELEASE-VERIFICATION.md](${repo}/blob/${tag}/docs/RELEASE-VERIFICATION.md)
+We do **not** claim byte-for-byte reproducible builds from source. Build from source is always available.
 `);
