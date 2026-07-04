@@ -34,6 +34,11 @@ jobs:
 
       - run: pnpm build
 
+      - name: Build uninstaller app
+        run: |
+          osacompile -o "resources/mac/Uninstall BitTracker.app" resources/mac/uninstall.applescript
+          cp resources/icon.icns "resources/mac/Uninstall BitTracker.app/Contents/Resources/applet.icns"
+
       - name: Package macOS DMG
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
