@@ -104,6 +104,27 @@
       "**/*.wasm",
       "**/node_modules/tslib/**"
     ],
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220,
+          "type": "file"
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 270,
+          "y": 60,
+          "type": "file",
+          "path": "resources/mac/Uninstall BitTracker.command"
+        }
+      ]
+    },
     "mac": {
       "identity": "Somlai Simon (M6349D88KR)",
       "target": [

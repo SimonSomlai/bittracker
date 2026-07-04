@@ -6,6 +6,8 @@ const tag = `v${info.version}`;
 const commitUrl = `${repo}/commit/${info.commitFull}`;
 const releaseUrl = `${repo}/releases/tag/${tag}`;
 
+const repoSlug = repo.replace("https://github.com/", "");
+
 process.stdout.write(`## BitTracker ${info.version}
 
 Built from [\`${info.commit}\`](${commitUrl}) on ${info.builtAt.slice(0, 10)}.
@@ -13,11 +15,12 @@ Built from [\`${info.commit}\`](${commitUrl}) on ${info.builtAt.slice(0, 10)}.
 ### Verify your download
 
 1. Download \`BitTracker-${info.version}.dmg\` (macOS) and/or \`BitTracker-${info.version}.exe\` (Windows) from [this release](${releaseUrl}) — not from third-party mirrors.
-2. Check the SHA-256 hash:
+2. Verify build provenance with the [GitHub CLI](https://cli.github.com/):
    \`\`\`bash
-   shasum -a 256 BitTracker-${info.version}.dmg
+   gh attestation verify BitTracker-${info.version}.dmg -R ${repoSlug}
+   gh attestation verify BitTracker-${info.version}.exe -R ${repoSlug}
    \`\`\`
-   Compare with \`SHA256SUMS\` attached to this release.
+   This cryptographically confirms the file was built by this repository's release workflow from commit \`${info.commit}\`.
 3. Check the footer (bottom right) shows **v${info.version} · ${info.commit}**.
 4. Compare that commit with the tag source on GitHub: [${tag}](${repo}/tree/${tag}).
 
@@ -35,9 +38,7 @@ Look for \`TeamIdentifier=M6349D88KR\` in the output.
 
 ### What this proves
 
-- The file you downloaded is the one Github CI built in this release.
+- The attestation confirms this exact file was produced by this repository's GitHub Actions workflow from commit \`${info.commit}\`, not a third party or a tampered build.
 - The app reports the same git commit as the release tag.
 - macOS Gatekeeper accepts the signed, notarized build connected to my Apple Developer account.
-
-We do **not** claim byte-for-byte reproducible builds from source. For this, building from source is always available.
 `);
