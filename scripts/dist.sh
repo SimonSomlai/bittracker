@@ -28,10 +28,9 @@ if [[ "$platform" == "Darwin" ]]; then
   fi
 
   echo "Building uninstaller app…"
-  UNINSTALLER_APP="$ROOT/resources/mac/Uninstall BitTracker.app"
+  UNINSTALLER_APP="$ROOT/resources/mac/BitTracker Uninstaller.app"
   osacompile -o "$UNINSTALLER_APP" "$ROOT/resources/mac/uninstall.applescript"
-  # Replace the default AppleScript icon with the BitTracker icon
-  cp "$ROOT/resources/icon.icns" "$UNINSTALLER_APP/Contents/Resources/applet.icns"
+  cp "$ROOT/resources/mac/uninstaller.icns" "$UNINSTALLER_APP/Contents/Resources/applet.icns"
 
   # Sign it — required so Apple accepts it during DMG notarization
   _sign_id="${CSC_NAME:-}"
@@ -40,7 +39,7 @@ if [[ "$platform" == "Darwin" ]]; then
       | grep -o '"Developer ID Application:[^"]*"' | head -1 | tr -d '"')"
   fi
   if [[ -n "$_sign_id" ]]; then
-    codesign --force --sign "$_sign_id" --options runtime "$UNINSTALLER_APP"
+    codesign --force --sign "$_sign_id" --options runtime --deep "$UNINSTALLER_APP"
   else
     echo "Warning: no Developer ID signing identity found; uninstaller will not be signed." >&2
   fi

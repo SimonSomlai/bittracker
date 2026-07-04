@@ -35,9 +35,12 @@ jobs:
       - run: pnpm build
 
       - name: Build uninstaller app
+        env:
+          CSC_NAME: ${{ secrets.CSC_NAME }}
         run: |
-          osacompile -o "resources/mac/Uninstall BitTracker.app" resources/mac/uninstall.applescript
-          cp resources/icon.icns "resources/mac/Uninstall BitTracker.app/Contents/Resources/applet.icns"
+          osacompile -o "resources/mac/BitTracker Uninstaller.app" resources/mac/uninstall.applescript
+          cp resources/mac/uninstaller.icns "resources/mac/BitTracker Uninstaller.app/Contents/Resources/applet.icns"
+          codesign --force --sign "$CSC_NAME" --options runtime --deep "resources/mac/BitTracker Uninstaller.app"
 
       - name: Package macOS DMG
         env:

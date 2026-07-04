@@ -1,4 +1,4 @@
--- Uninstall BitTracker
+-- BitTracker Uninstaller
 -- Removes the application bundle and all locally stored data.
 
 set appPath to "/Applications/BitTracker.app"
@@ -10,7 +10,7 @@ try
 		default button "Cancel" ¬
 		cancel button "Cancel" ¬
 		with icon caution ¬
-		with title "Uninstall BitTracker"
+		with title "BitTracker Uninstaller"
 on error
 	return
 end try
@@ -30,7 +30,7 @@ on error
 	on error errMsg
 		display dialog "Uninstall failed: " & errMsg ¬
 			buttons {"OK"} default button "OK" with icon stop ¬
-			with title "Uninstall BitTracker"
+			with title "BitTracker Uninstaller"
 		return
 	end try
 end try
@@ -38,4 +38,4 @@ end try
 display dialog "BitTracker and its data have been removed." ¬
 	buttons {"OK"} ¬
 	default button "OK" ¬
-	with title "Uninstall BitTracker"
+	with title "BitTracker Uninstaller"
