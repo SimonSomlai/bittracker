@@ -101,7 +101,8 @@
     ],
     "asarUnpack": [
       "**/*.node",
-      "**/*.wasm"
+      "**/*.wasm",
+      "**/node_modules/tslib/**"
     ],
     "mac": {
       "identity": "Somlai Simon (M6349D88KR)",
@@ -116,6 +117,7 @@
       "notarize": true
     },
     "win": {
+      "icon": "resources/icon.ico",
       "target": [
         {
           "target": "nsis",
