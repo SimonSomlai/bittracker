@@ -11,10 +11,10 @@
   "type": "module",
   "scripts": {
     "predev": "pnpm run dev:cleanup",
-    "dev:cleanup": "kill-port 5173 || true",
+    "dev:cleanup": "lsof -ti:5173 | xargs kill 2>/dev/null || true",
     "dev": "concurrently \"pnpm run dev:renderer\" \"pnpm run dev:electron\"",
     "dev:renderer": "vite",
-    "dev:electron": "wait-on tcp:5173 && node scripts/watch-electron.mjs",
+    "dev:electron": "node scripts/wait-port.mjs 5173 && node scripts/watch-electron.mjs",
     "prices:fetch": "node scripts/fetch-btc-prices.mjs",
     "prices:fetch:fx": "node scripts/fetch-fx-rates.mjs",
     "prices:fetch:diff": "node scripts/fetch-btc-prices.mjs --diff",
@@ -55,10 +55,7 @@
     "@remix-run/react": "2.17.5",
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
-    "autoprefixer": "10.4.20",
     "bitcoinjs-lib": "6.1.7",
-    "class-variance-authority": "0.7.1",
-    "clsx": "2.1.1",
     "concurrently": "9.0.1",
     "date-fns": "4.4.0",
     "electron": "38.8.6",
@@ -70,7 +67,6 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "exceljs": "4.4.0",
     "globals": "17.7.0",
-    "kill-port": "2.0.1",
     "knip": "6.24.0",
     "lucide-react": "0.469.0",
     "postcss": "8.5.16",
@@ -84,8 +80,7 @@
     "typescript": "5.7.2",
     "typescript-eslint": "8.62.1",
     "vite": "8.1.3",
-    "vite-tsconfig-paths": "5.1.4",
-    "wait-on": "8.0.1"
+    "vite-tsconfig-paths": "5.1.4"
   },
   "build": {
     "appId": "app.bittrack.desktop",

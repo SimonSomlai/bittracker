@@ -1,5 +1,12 @@
 import { app, BrowserWindow, ipcMain, net, protocol, session, shell } from "electron";
 import path from "node:path";
+
+// Suppress Electron security warnings in development — Vite HMR requires
+// unsafe-eval and the dev server doesn't serve a CSP header.
+// In production the app is packaged and Electron never shows these warnings.
+if (process.env.ELECTRON_RENDERER_URL) {
+  process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
+}
 import { pathToFileURL } from "node:url";
 import { isDatabaseOpen, lockDatabase, openDatabase, setDatabaseLockListener } from "./src/auth/db";
 import {
