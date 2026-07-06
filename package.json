@@ -143,6 +143,7 @@
       "entitlementsInherit": "resources/entitlements.mac.plist",
       "notarize": true
     },
+    "afterSign": "scripts/after-sign.cjs",
     "win": {
       "icon": "resources/icon.ico",
       "target": [
