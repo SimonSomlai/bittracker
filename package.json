@@ -2,6 +2,8 @@
   "name": "bittrack",
   "version": "0.1.17",
   "private": true,
+  "author": "Somlai Simon",
+  "license": "MIT",
   "description": "Bitcoin accounting desktop app",
   "repository": {
     "type": "git",
@@ -99,7 +101,8 @@
     "asarUnpack": [
       "**/*.node",
       "**/*.wasm",
-      "**/node_modules/tslib/**"
+      "**/node_modules/tslib/**",
+      "**/tor/**"
     ],
     "extraResources": [
       {
@@ -141,9 +144,12 @@
       "gatekeeperAssess": false,
       "entitlements": "resources/entitlements.mac.plist",
       "entitlementsInherit": "resources/entitlements.mac.plist",
-      "notarize": true
+      "notarize": true,
+      "binaries": [
+        "resources/tor/darwin/tor",
+        "resources/tor/darwin/libevent-2.1.7.dylib"
+      ]
     },
-    "afterSign": "scripts/after-sign.cjs",
     "win": {
       "icon": "resources/icon.ico",
       "target": [

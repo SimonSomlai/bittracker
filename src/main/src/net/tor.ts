@@ -29,8 +29,12 @@ function torBinaryName() {
 function resolveTorBinaryPath() {
   // In dev, resources live in the repo; in a packaged app, extraResources land
   // in process.resourcesPath/tor/<platform>/tor(.exe).
-  const platformDir =
-    process.platform === "win32" ? "win" : process.platform === "darwin" ? "mac" : "linux";
+  const getPlatformDir = () => {
+    if (process.platform === "win32") return "win32";
+    if (process.platform === "darwin") return "darwin";
+    throw new Error(`Unsupported platform: ${process.platform}`);
+  };
+  const platformDir = getPlatformDir();
   const base = app.isPackaged
     ? path.join(process.resourcesPath, "tor", platformDir)
     : path.join(app.getAppPath(), "resources", "tor", platformDir);

@@ -8,7 +8,7 @@ cd "$ROOT"
 # (see src/main/src/net/tor.ts) so a packaged build without the verified binary
 # would silently fail to sync. Run `node scripts/fetch-tor-binaries.mjs` first,
 # after pinning real checksums from the Tor Project's signed sha256sums file.
-for platform_dir in resources/tor/mac resources/tor/win resources/tor/linux; do
+for platform_dir in resources/tor/darwin resources/tor/win32; do
   if [[ ! -f "$platform_dir/tor" && ! -f "$platform_dir/tor.exe" ]]; then
     echo "Missing bundled Tor binary in $platform_dir." >&2
     echo "Run: node scripts/fetch-tor-binaries.mjs (after pinning verified checksums)" >&2

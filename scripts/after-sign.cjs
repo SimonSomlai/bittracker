@@ -22,20 +22,16 @@ exports.default = async function afterSign(context) {
     return;
   }
 
-  const entitlementsPath = path.join(__dirname, "..", "resources", "entitlements.mac.plist");
-
-  const signingArgsEntitled = [
+  const signingArgs = [
     "--force",
     "--options",
     "runtime",
     "--timestamp",
     "--sign",
     signingIdentity,
-    "--entitlements",
-    entitlementsPath,
   ];
 
-  const torResourcesDir = path.join(appPath, "Contents", "Resources", "tor", "mac");
+  const torResourcesDir = path.join(appPath, "Contents", "Resources", "tor", "darwin");
   if (fs.existsSync(torResourcesDir)) {
     for (const entry of fs.readdirSync(torResourcesDir, { withFileTypes: true })) {
       if (!entry.isFile()) {
@@ -44,7 +40,7 @@ exports.default = async function afterSign(context) {
 
       const target = path.join(torResourcesDir, entry.name);
 
-      execFileSync("codesign", [...signingArgsEntitled, target], { stdio: "inherit" });
+      execFileSync("codesign", [...signingArgs, target], { stdio: "inherit" });
     }
   }
 };
