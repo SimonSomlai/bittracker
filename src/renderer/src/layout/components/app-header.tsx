@@ -52,7 +52,12 @@ export function AppHeader({
         </div>
         <div className="window-no-drag flex items-center gap-2">
           {hasWallets || syncing ? (
-            <Button variant="outline" onClick={onSync} disabled={syncing} className="min-w-[9.5rem]">
+            <Button
+              variant="outline"
+              onClick={onSync}
+              disabled={syncing}
+              className="min-w-[9.5rem]"
+            >
               <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
               {syncButtonLabel(syncing, syncProgress)}
             </Button>

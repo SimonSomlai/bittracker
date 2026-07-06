@@ -234,7 +234,11 @@ function formatExportFiat(value: number) {
   return roundFiatAmount(value).toFixed(2);
 }
 
-function exportRowValues(row: DashboardRow, currentBtcPrice: number | null, btcUnit: BtcDisplayUnit) {
+function exportRowValues(
+  row: DashboardRow,
+  currentBtcPrice: number | null,
+  btcUnit: BtcDisplayUnit,
+) {
   const currentValue = transactionCurrentValue(row.btcAmount, currentBtcPrice);
   const valueAtDate = row.customValueAtDate ?? row.valueAtDate;
   const unrealizedGain = transactionUnrealizedGain(valueAtDate, currentValue);
@@ -251,7 +255,11 @@ function exportRowValues(row: DashboardRow, currentBtcPrice: number | null, btcU
   };
 }
 
-function exportRowCsvValues(row: DashboardRow, currentBtcPrice: number | null, btcUnit: BtcDisplayUnit) {
+function exportRowCsvValues(
+  row: DashboardRow,
+  currentBtcPrice: number | null,
+  btcUnit: BtcDisplayUnit,
+) {
   const values = exportRowValues(row, currentBtcPrice, btcUnit);
   return [
     values.date,
@@ -297,7 +305,11 @@ export async function maintainTransactionIntegrity(db: Database.Database) {
   return { backfilled, removedRbf };
 }
 
-async function rowsForExport(currencyInput: unknown = "USD", transactionIds?: number[], btcUnitInput?: unknown) {
+async function rowsForExport(
+  currencyInput: unknown = "USD",
+  transactionIds?: number[],
+  btcUnitInput?: unknown,
+) {
   const currency = parseCurrency(currencyInput);
   const btcUnit = parseBtcDisplayUnit(btcUnitInput);
   const db = getDatabase();
@@ -316,12 +328,22 @@ function escapeCsv(value: string | number | null | undefined) {
   return text;
 }
 
-export async function exportCsv(currencyInput: unknown = "USD", transactionIds?: number[], btcUnitInput?: unknown) {
-  const { rows, currency, currentBtcPrice, btcUnit } = await rowsForExport(currencyInput, transactionIds, btcUnitInput);
+export async function exportCsv(
+  currencyInput: unknown = "USD",
+  transactionIds?: number[],
+  btcUnitInput?: unknown,
+) {
+  const { rows, currency, currentBtcPrice, btcUnit } = await rowsForExport(
+    currencyInput,
+    transactionIds,
+    btcUnitInput,
+  );
   const headers = exportHeaders(currency, btcUnit);
   const lines = [
     headers.join(","),
-    ...rows.map((row) => exportRowCsvValues(row, currentBtcPrice, btcUnit).map(escapeCsv).join(",")),
+    ...rows.map((row) =>
+      exportRowCsvValues(row, currentBtcPrice, btcUnit).map(escapeCsv).join(","),
+    ),
   ];
   const result = await dialog.showSaveDialog({
     defaultPath: "bittrack-transactions.csv",
@@ -334,8 +356,16 @@ export async function exportCsv(currencyInput: unknown = "USD", transactionIds?:
   return { ok: true as const, path: result.filePath };
 }
 
-export async function exportXls(currencyInput: unknown = "USD", transactionIds?: number[], btcUnitInput?: unknown) {
-  const { rows, currency, currentBtcPrice, btcUnit } = await rowsForExport(currencyInput, transactionIds, btcUnitInput);
+export async function exportXls(
+  currencyInput: unknown = "USD",
+  transactionIds?: number[],
+  btcUnitInput?: unknown,
+) {
+  const { rows, currency, currentBtcPrice, btcUnit } = await rowsForExport(
+    currencyInput,
+    transactionIds,
+    btcUnitInput,
+  );
   const headers = exportHeaders(currency, btcUnit);
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Transactions");

@@ -51,7 +51,8 @@ export function ResetAppDialog({ open, onOpenChange }: ResetAppDialogProps) {
         <DialogHeader>
           <DialogTitle>Reset BitTracker?</DialogTitle>
           <DialogDescription>
-            This deletes all your BitTracker data and settings - You can always re-add your wallets and transactions later.
+            This deletes all your BitTracker data and settings - You can always re-add your wallets
+            and transactions later.
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleReset}>

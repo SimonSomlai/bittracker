@@ -99,8 +99,8 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
               BitTracker must run inside the desktop app. Start it with{" "}
-              <code className="text-xs">pnpm dev</code> and use the Electron
-              window, not the browser tab at localhost.
+              <code className="text-xs">pnpm dev</code> and use the Electron window, not the browser
+              tab at localhost.
             </p>
           </CardHeader>
         </Card>
@@ -139,9 +139,7 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
               <AppLogo size="lg" />
             </div>
             {!initialized && (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Create a secure password
-              </p>
+              <p className="mt-3 text-sm text-muted-foreground">Create a secure password</p>
             )}
           </CardHeader>
           <CardContent>
@@ -161,11 +159,7 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
                     className="window-no-drag absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                     onClick={() => setShowPassword((value) => !value)}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
@@ -181,11 +175,7 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
                 </div>
               ) : null}
               <Button className="w-full" disabled={submitting}>
-                {submitting
-                  ? "Working…"
-                  : initialized
-                  ? "Unlock"
-                  : "Create vault"}
+                {submitting ? "Working…" : initialized ? "Unlock" : "Create vault"}
               </Button>
             </form>
           </CardContent>
@@ -194,9 +184,5 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return (
-    <AutoLockProvider onLock={() => setUnlocked(false)}>
-      {children}
-    </AutoLockProvider>
-  );
+  return <AutoLockProvider onLock={() => setUnlocked(false)}>{children}</AutoLockProvider>;
 }
