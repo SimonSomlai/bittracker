@@ -14,13 +14,13 @@ Bitcoin accounting desktop app - Privacy first.
 - All data stored encrypted at rest on your device
 - Sync uses BlockStream API over Tor (no ip-logging), custom Esplora API configurable
 
-## Security & architecture
+## Development
 
 ![Technical architecture](docs/architecture.png)
 
-**Summary:** Portfolio data is encrypted at rest using user password (Argon2 + SQLCipher). Chain sync queries public Esplora APIs with derived addresses. Custom Bitcoin node configurable.
+**Summary:** Portfolio data is encrypted at rest using user password (Argon2 + SQLCipher). Chain sync queries public Esplora APIs through a bundled Tor daemon for privacy, with derived addresses and custom Bitcoin node configuration available.
 
-## Development
+## Contributing
 
 ```bash
 pnpm install

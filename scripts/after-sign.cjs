@@ -24,7 +24,18 @@ exports.default = async function afterSign(context) {
 
   const entitlementsPath = path.join(__dirname, "..", "resources", "entitlements.mac.plist");
 
-  const signingArgs = [
+  // Use a minimal signing argument set for inner binaries (no entitlements).
+  const signingArgsBinary = [
+    "--force",
+    "--options",
+    "runtime",
+    "--timestamp",
+    "--sign",
+    signingIdentity,
+  ];
+
+  // Use entitlements for the main executable and bundle signing.
+  const signingArgsEntitled = [
     "--force",
     "--options",
     "runtime",
@@ -35,12 +46,9 @@ exports.default = async function afterSign(context) {
     entitlementsPath,
   ];
 
-  const targets = [path.join(appPath, "Contents", "MacOS", appName)];
-
-  for (const target of targets) {
-    if (fs.existsSync(target)) {
-      execFileSync("codesign", [...signingArgs, target], { stdio: "inherit" });
-    }
+  const mainExe = path.join(appPath, "Contents", "MacOS", appName);
+  if (fs.existsSync(mainExe)) {
+    execFileSync("codesign", [...signingArgsEntitled, mainExe], { stdio: "inherit" });
   }
 
   const torResourcesDir = path.join(appPath, "Contents", "Resources", "tor", "mac");
@@ -55,14 +63,10 @@ exports.default = async function afterSign(context) {
         continue;
       }
 
-      execFileSync("codesign", [...signingArgs, target], { stdio: "inherit" });
+      // Sign inner helper binaries and dylibs without entitlements.
+      execFileSync("codesign", [...signingArgsBinary, target], { stdio: "inherit" });
     }
   }
-
-  execFileSync("codesign", [...signingArgs, appPath], { stdio: "inherit" });
-
-  if (fs.existsSync(path.join(outDir, `${appName}.dmg`))) {
-    const dmgPath = path.join(outDir, `${appName}.dmg`);
-    execFileSync("codesign", [...signingArgs, dmgPath], { stdio: "inherit" });
-  }
+  // Sign the top-level app bundle with entitlements.
+  execFileSync("codesign", [...signingArgsEntitled, appPath], { stdio: "inherit" });
 };
