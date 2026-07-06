@@ -22,6 +22,8 @@ exports.default = async function afterSign(context) {
     return;
   }
 
+  const entitlementsPath = path.join(__dirname, "..", "resources", "entitlements.mac.plist");
+
   const signingArgs = [
     "--force",
     "--options",
@@ -30,9 +32,7 @@ exports.default = async function afterSign(context) {
     "--sign",
     signingIdentity,
     "--entitlements",
-    path.join(__dirname, "..", "resources", "entitlements.mac.plist"),
-    "--entitlements-inherit",
-    path.join(__dirname, "..", "resources", "entitlements.mac.plist"),
+    entitlementsPath,
   ];
 
   const targets = [path.join(appPath, "Contents", "MacOS", appName)];
