@@ -12,7 +12,7 @@ Bitcoin accounting desktop app - Privacy first.
 
 - Track multiple Hardware wallets (Ledger, Trezor & Xpub support)
 - All data stored encrypted at rest on your device
-- Sync uses BlockStream API (no-logging), custom Esplora API configurable
+- Sync uses BlockStream API over Tor (no ip-logging), custom Esplora API configurable
 
 ## Security & architecture
 

@@ -1,4 +1,5 @@
 import { getEsploraApiUrls } from "../settings/network-env";
+import { torFetch } from "../net/tor";
 
 interface EsploraTxStatus {
   confirmed: boolean;
@@ -66,7 +67,7 @@ export class EsploraClient {
     for (let attempt = 0; attempt < order.length; attempt++) {
       const index = order[attempt]!;
       const baseUrl = this.baseUrls[index]!;
-      const response = await fetch(`${baseUrl}${path}`);
+      const response = await torFetch(`${baseUrl}${path}`);
 
       if (response.status === 429) {
         saw429 = true;

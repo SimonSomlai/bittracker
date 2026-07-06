@@ -36,6 +36,7 @@ import { exportCsv, exportXls, setCustomValueAtDate } from "./src/transactions/t
 import { updateMarketDataDiff } from "./src/market/update";
 import { addWallet, listWallets, renameWallet } from "./src/wallets/wallet";
 import { registerTrezorUiIpc, setTrezorUiWindow } from "./src/wallets/trezor-ui-bridge";
+import { getTorExitIp, isTorRunning, setTorStatusListener, startTor, stopTor, verifyTor } from "./src/net/tor";
 
 const APP_PROTOCOL = "app";
 
@@ -152,6 +153,14 @@ app.whenReady().then(() => {
   });
   setTrezorUiWindow(() => mainWindow);
   setSyncProgressWindow(() => mainWindow);
+  setTorStatusListener((running) => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send("tor:status-changed", running);
+    }
+  });
+  startTor().catch((err) => {
+    console.error("[bittrack] Tor failed to start, network requests will be blocked:", err);
+  });
   void updateMarketDataDiff();
   createWindow();
   app.on("activate", () => {
@@ -167,6 +176,13 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
+
+app.on("will-quit", () => {
+  stopTor();
+});
+
+ipcMain.handle("tor:status", () => ({ running: isTorRunning(), exitIp: getTorExitIp() }));
+ipcMain.handle("tor:verify", () => verifyTor());
 
 ipcMain.handle("network:get", () => ({
   network: getNetworkId(),

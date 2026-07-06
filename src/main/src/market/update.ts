@@ -1,4 +1,5 @@
 import type { FiatCurrency } from "../shared/currency";
+import { torFetch } from "../net/tor";
 import {
   addDays,
   getEffectiveBtcEndDate,
@@ -15,7 +16,7 @@ const BLOCKCHAIN_CHART = "https://api.blockchain.info/charts/market-price";
 const FIAT: FiatCurrency[] = ["USD", "EUR", "GBP"];
 
 async function fetchJson<T>(url: string, label: string): Promise<T> {
-  const response = await fetch(url);
+  const response = await torFetch(url);
   if (!response.ok) {
     const body = await response.text();
     throw new Error(`${label} failed (${response.status}): ${body.slice(0, 200)}`);

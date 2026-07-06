@@ -113,6 +113,15 @@ const exportApi = {
     ipcRenderer.invoke("export:xls", currency, transactionIds, btcUnit),
 };
 
+const torApi = {
+  getTorStatus: () =>
+    ipcRenderer.invoke("tor:status") as Promise<{ running: boolean; exitIp: string | null }>,
+  verifyTor: () =>
+    ipcRenderer.invoke("tor:verify") as Promise<{ isTor: boolean; ip: string }>,
+  onTorStatusChange: (callback: (running: boolean) => void) =>
+    onChannel("tor:status-changed", (running: boolean) => callback(running)),
+};
+
 const trezorUiApi = {
   onTrezorUiRequest: (callback: (request: TrezorUiRequest) => void) =>
     onChannel("trezor:ui-request", (request: TrezorUiRequest) => callback(request)),
@@ -136,5 +145,6 @@ contextBridge.exposeInMainWorld("bittrack", {
   ...dashboardApi,
   ...transactionsApi,
   ...exportApi,
+  ...torApi,
   ...trezorUiApi,
 });

@@ -2,6 +2,7 @@ import { getBundledPrice, todayDateKey } from "./store";
 import { getFxRate } from "./fx";
 import type { FiatCurrency } from "../shared/currency";
 import { getDatabase } from "../auth/db";
+import { torFetch } from "../net/tor";
 
 const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
 const SUPPORTED: FiatCurrency[] = ["USD", "EUR", "GBP"];
@@ -45,7 +46,7 @@ function getCachedPriceForCurrency(dateKey: string, currency: FiatCurrency) {
 }
 
 async function fetchPricesForDateFromCoinGecko(dateKey: string) {
-  const response = await fetch(
+  const response = await torFetch(
     `${COINGECKO_BASE}/coins/bitcoin/history?date=${toCoinGeckoDate(dateKey)}&localization=false`,
   );
   if (!response.ok) {
@@ -162,7 +163,7 @@ export async function getCurrentBtcPrice(currency: FiatCurrency = "USD") {
   const today = todayDateKey();
 
   try {
-    const response = await fetch(
+    const response = await torFetch(
       `${COINGECKO_BASE}/simple/price?ids=bitcoin&vs_currencies=usd,eur,gbp`,
     );
     if (!response.ok) {

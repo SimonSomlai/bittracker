@@ -293,6 +293,9 @@ export interface BittrackApi {
     transactionIds?: number[],
     btcUnit?: string,
   ) => Promise<{ ok: boolean; path?: string; error?: string }>;
+  getTorStatus?: () => Promise<{ running: boolean; exitIp: string | null }>;
+  verifyTor?: () => Promise<{ isTor: boolean; ip: string }>;
+  onTorStatusChange?: (callback: (running: boolean) => void) => () => void;
   onTrezorUiRequest?: (callback: (request: TrezorUiRequest) => void) => () => void;
   sendTrezorUiResponse?: (response: TrezorUiResponse) => Promise<{ ok: boolean; error?: string }>;
   cancelTrezorUi?: (requestId?: string) => Promise<{ ok: boolean }>;
