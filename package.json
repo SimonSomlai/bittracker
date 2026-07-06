@@ -39,6 +39,7 @@
     "better-sqlite3-multiple-ciphers": "11.7.0",
     "bip32": "4.0.0",
     "tiny-secp256k1": "2.2.3",
+    "tslib": "2.6.0",
     "usb": "2.15.0"
   },
   "devDependencies": {
