@@ -167,7 +167,7 @@ function dedupeTransactionRows(rows: TransactionRow[]): TransactionRow[] {
   });
 }
 
-/** Coerce IPC/legacy dashboard chart payloads into ChartData. */
+/** Coerce IPC dashboard chart payloads into ChartData. */
 export function normalizeChartData(raw: unknown): ChartData {
   if (!raw) return EMPTY_CHART;
 

@@ -59,32 +59,6 @@ function readJsonFile<T>(filePath: string): T | null {
   }
 }
 
-function normalizeLegacyBundle(raw: {
-  generatedAt?: string;
-  source?: string;
-  startDate?: string | null;
-  endDate?: string | null;
-  prices?: Record<string, number | DailyPrices>;
-}): BtcPriceBundle | null {
-  if (!raw.prices) return null;
-  const prices: Record<string, DailyPrices> = {};
-  for (const [dateKey, value] of Object.entries(raw.prices)) {
-    if (typeof value === "number") {
-      prices[dateKey] = { USD: value };
-    } else if (value && typeof value === "object") {
-      prices[dateKey] = value;
-    }
-  }
-  const dates = Object.keys(prices).sort();
-  return {
-    generatedAt: raw.generatedAt ?? new Date(0).toISOString(),
-    source: raw.source ?? "legacy-usd-bundle",
-    startDate: raw.startDate ?? dates[0] ?? null,
-    endDate: raw.endDate ?? dates.at(-1) ?? null,
-    prices,
-  };
-}
-
 function maxDateKey(dates: string[]) {
   if (dates.length === 0) return null;
   return [...dates].sort().at(-1) ?? null;
@@ -97,7 +71,7 @@ export function clearMarketDataCache() {
 
 export function getShippedBtcBundle() {
   if (shippedBundle === undefined) {
-    shippedBundle = normalizeLegacyBundle(readJsonFile<BtcPriceBundle>(shippedPath()) ?? {});
+    shippedBundle = readJsonFile<BtcPriceBundle>(shippedPath());
   }
   return shippedBundle;
 }

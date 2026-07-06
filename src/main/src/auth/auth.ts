@@ -6,18 +6,13 @@ import { lockDatabase } from "./db";
 import { clearMarketDataCache } from "../market/store";
 import { clearPreferencesCache } from "../settings/preferences";
 import { setRuntimeNetwork } from "../settings/network-env-core";
-import {
-  getUserDataDirsForReset,
-  getUserDataDir,
-  wipeUserDataDir,
-} from "../shared/paths";
+import { getUserDataDirsForReset, getUserDataDir, wipeUserDataDir } from "../shared/paths";
 
 const META_FILE = "meta.json";
-const LEGACY_DB_KEY_SALT = Buffer.from("bittrack-sqlcipher-v1", "utf8");
 
 interface AuthMeta {
   passwordHash: string;
-  dbKeySalt?: string;
+  dbKeySalt: string;
 }
 
 function getMetaPath() {
@@ -57,15 +52,19 @@ export async function verifyPassword(password: string) {
 }
 
 function resolveDbKeySalt(meta: AuthMeta) {
-  if (meta.dbKeySalt) {
-    return Buffer.from(meta.dbKeySalt, "hex");
+  if (!meta.dbKeySalt) {
+    throw new Error("Invalid authentication metadata");
   }
-  return LEGACY_DB_KEY_SALT;
+  return Buffer.from(meta.dbKeySalt, "hex");
 }
 
 export async function deriveDbKey(password: string) {
-  const meta = isInitialized() ? readMeta() : null;
-  const salt = meta ? resolveDbKeySalt(meta) : LEGACY_DB_KEY_SALT;
+  if (!isInitialized()) {
+    throw new Error("App is not initialized");
+  }
+
+  const meta = readMeta();
+  const salt = resolveDbKeySalt(meta);
   const hash = await argon2.hash(password, {
     type: argon2.argon2id,
     salt,
@@ -79,10 +78,10 @@ export async function deriveDbKey(password: string) {
 }
 
 export function resetAppData() {
-  lockDatabase();
   clearMarketDataCache();
   clearPreferencesCache();
   setRuntimeNetwork(null);
+  lockDatabase();
 
   for (const dir of getUserDataDirsForReset()) {
     wipeUserDataDir(dir);

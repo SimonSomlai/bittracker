@@ -1,11 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getUserDataDir } from "../shared/paths";
-import {
-  isDevEnvironment,
-  setRuntimeNetwork,
-  type BitcoinNetworkId,
-} from "./network-env-core";
+import { isDevEnvironment, setRuntimeNetwork, type BitcoinNetworkId } from "./network-env-core";
 
 export interface AppPreferences {
   esploraBaseUrl: string | null;
@@ -13,7 +9,6 @@ export interface AppPreferences {
 }
 
 const PREFS_FILE = "preferences.json";
-const LEGACY_DEV_NETWORK_FILE = "dev-network.json";
 
 const DEFAULTS: AppPreferences = {
   esploraBaseUrl: null,
@@ -24,10 +19,6 @@ let cached: AppPreferences | null = null;
 
 function prefsPath() {
   return path.join(getUserDataDir(), PREFS_FILE);
-}
-
-function legacyDevNetworkPath() {
-  return path.join(getUserDataDir(), LEGACY_DEV_NETWORK_FILE);
 }
 
 export function validateEsploraUrl(url: unknown): string | null {
@@ -69,33 +60,7 @@ function normalizePreferences(raw: Partial<AppPreferences>): AppPreferences {
   return { esploraBaseUrl, devNetwork };
 }
 
-function migrateLegacyDevNetworkFile() {
-  const legacyPath = legacyDevNetworkPath();
-  if (!fs.existsSync(legacyPath)) return;
-
-  try {
-    const data = JSON.parse(fs.readFileSync(legacyPath, "utf8")) as { network?: string };
-    const devNetwork = normalizeDevNetwork(data.network);
-    if (devNetwork) {
-      const current = fs.existsSync(prefsPath())
-        ? normalizePreferences(JSON.parse(fs.readFileSync(prefsPath(), "utf8")))
-        : { ...DEFAULTS };
-      fs.mkdirSync(getUserDataDir(), { recursive: true });
-      fs.writeFileSync(
-        prefsPath(),
-        JSON.stringify(normalizePreferences({ ...current, devNetwork }), null, 2),
-      );
-      cached = null;
-    }
-    fs.unlinkSync(legacyPath);
-  } catch {
-    // Ignore corrupt legacy files.
-  }
-}
-
 function readPreferencesFile(): AppPreferences {
-  migrateLegacyDevNetworkFile();
-
   if (!fs.existsSync(prefsPath())) {
     return { ...DEFAULTS };
   }

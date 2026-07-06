@@ -1,6 +1,6 @@
 # BitTracker
 
-Bitcoin accounting desktop app - Privacy first. 
+Bitcoin accounting desktop app - Privacy first.
 
 ![Graph](docs/graph.png)
 
@@ -50,4 +50,4 @@ Add wallets via **Add wallet → Enter xpub manually**. These public BIP84 test 
 | Label               | xpub                                                                                                              | Notes                                                                                                                                                                                                                                     |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | BIP32 test vector 1 | `tpubDDNRbZGvdA33cgpY5uy2mmphT7sK4uciRjcQScSd64S5KRyZDxHcPuzs24or84Hywugb2JbEEt2jWH8fduiN9cmZzkSj8sSSx6txXkhXyZs` | [BIP32 test seed](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#test-vector-1-for-seed-000102030405060708090a0b0c0d0e0f). First receive address `tb1q7f0pjwhc3jzzv0w4uurm589506glv2dg2qy7ze` (~12 txs).                  |
-| BIP39 “abandon…”    | `tpubDC8msFGeGuwnKG9Upg7DM2b4DaRqg3CUZa5g8v2SRQ6K4NSkxUgd7HsL2XVWbVm39yBA4LAxysQAm397zwQSQoQgewGiYZqrA9DsP4zbQ1M` | Mnemonic `abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about`. First receive address `tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl` (~360 txs). Handy second wallet for multi-wallet UI testing. |
+| BIP39 “abandon…”    | `tpubDC8msFGeGuwnKG9Upg7DM2b4DaRqg3CUZa5g8v2SRQ6K4NSkxUgd7HsL2XVWbVm39yBA4LAxysQAm397zwQSQoQgewGiYZqrA9DsP4zbQ1M` | Mnemonic `abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about`. First receive address `tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl` (~600 txs). Handy second wallet for multi-wallet UI testing. |
