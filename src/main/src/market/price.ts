@@ -160,8 +160,6 @@ export async function ensurePricesForDates(dates: string[]) {
 
 export async function getCurrentBtcPrice(currency: FiatCurrency = "USD") {
   const today = todayDateKey();
-  const cached = getCachedPriceForCurrency(today, currency);
-  if (cached != null) return cached;
 
   try {
     const response = await fetch(

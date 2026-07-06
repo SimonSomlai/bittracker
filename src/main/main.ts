@@ -309,7 +309,10 @@ ipcMain.handle("wallet:connect-trezor", async () => {
 ipcMain.handle("sync:run", async () => {
   if (!isDatabaseOpen()) throw new Error("Database locked");
   try {
-    return await syncWallets();
+    const syncResult = await syncWallets();
+    // Always refresh market data diff after sync to get live prices
+    void updateMarketDataDiff({ force: true });
+    return syncResult;
   } catch (error) {
     return {
       ok: false,
