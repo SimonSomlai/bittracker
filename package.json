@@ -106,8 +106,8 @@
     ],
     "extraResources": [
       {
-        "from": "resources/tor/${os}",
-        "to": "tor/${os}",
+        "from": "resources/tor",
+        "to": "tor",
         "filter": [
           "**/*"
         ]

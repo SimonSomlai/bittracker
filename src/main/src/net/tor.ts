@@ -27,8 +27,6 @@ function torBinaryName() {
 }
 
 function resolveTorBinaryPath() {
-  // In dev, resources live in the repo; in a packaged app, extraResources land
-  // in process.resourcesPath/tor/<platform>/tor(.exe).
   const getPlatformDir = () => {
     if (process.platform === "win32") return "win32";
     if (process.platform === "darwin") return "darwin";
@@ -88,12 +86,18 @@ export function startTor(): Promise<void> {
     const child = spawn(
       binaryPath,
       [
-        "--SocksPort", String(SOCKS_PORT),
-        "--ControlPort", String(CONTROL_PORT),
-        "--CookieAuthentication", "1",
-        "--DataDirectory", torDataDir(),
-        "--Log", "notice stdout",
-        "--AvoidDiskWrites", "1",
+        "--SocksPort",
+        String(SOCKS_PORT),
+        "--ControlPort",
+        String(CONTROL_PORT),
+        "--CookieAuthentication",
+        "1",
+        "--DataDirectory",
+        torDataDir(),
+        "--Log",
+        "notice stdout",
+        "--AvoidDiskWrites",
+        "1",
       ],
       { stdio: ["ignore", "pipe", "pipe"] },
     );
