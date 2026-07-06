@@ -11,7 +11,12 @@ import {
 } from "./src/auth/auth";
 import { EsploraRateLimitError } from "./src/chain/esplora";
 import { syncWallets, setSyncProgressWindow } from "./src/chain/sync";
-import { BitcoinNetworkId, getExplorerWebUrl, getNetworkId, isDevEnvironment } from "./src/settings/network-env";
+import {
+  BitcoinNetworkId,
+  getExplorerWebUrl,
+  getNetworkId,
+  isDevEnvironment,
+} from "./src/settings/network-env";
 import {
   applyDevNetworkFromPreferences,
   loadPreferences,
@@ -103,6 +108,10 @@ function createWindow() {
     return { action: "allow" };
   });
 
+  mainWindow.on("close", () => {
+    lockDatabase();
+  });
+
   mainWindow.webContents.on("did-start-navigation", (_event, _url, isInPlace, isMainFrame) => {
     if (isMainFrame && !isInPlace) {
       lockDatabase();
@@ -118,7 +127,9 @@ app.whenReady().then(() => {
   registerRendererProtocol();
   registerTrezorUiIpc();
   setDatabaseLockListener(() => {
-    mainWindow?.webContents.send("auth:locked");
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send("auth:locked");
+    }
   });
   setTrezorUiWindow(() => mainWindow);
   setSyncProgressWindow(() => mainWindow);
