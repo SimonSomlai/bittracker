@@ -53,6 +53,9 @@ export function openDatabase(dbKeyHex: string) {
     db.close();
   }
   db = new Database(getDbPath());
+  // Dev debugging
+  // db.pragma(`cipher='sqlcipher'`);
+  // db.pragma(`legacy=4`);
   db.pragma(`key = "x'${dbKeyHex}'"`);
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA_SQL);

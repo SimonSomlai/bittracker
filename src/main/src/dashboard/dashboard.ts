@@ -10,11 +10,7 @@ import {
   resolvePriceSource,
 } from "../market/price";
 import { addDays, getShippedBtcBundle, todayDateKey } from "../market/store";
-import {
-  buildDashboardRows,
-  maintainTransactionIntegrity,
-  type DashboardRow,
-} from "../transactions/transactions";
+import { buildDashboardRows, type DashboardRow } from "../transactions/transactions";
 import { toWalletDto } from "../wallets/wallet";
 
 interface ChartSeriesPoint {

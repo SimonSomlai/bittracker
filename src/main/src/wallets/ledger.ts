@@ -4,7 +4,6 @@ import { getDerivationPath, getLedgerXpubVersion } from "../settings/network-env
 const require = createRequire(__filename);
 const TransportNodeHid = require("@ledgerhq/hw-transport-node-hid").default;
 const AppBtc = require("@ledgerhq/hw-app-btc").default;
-const { pathStringToArray } = require("@ledgerhq/hw-app-btc/lib/bip32");
 
 const DERIVATION = `${getDerivationPath()}`;
 
