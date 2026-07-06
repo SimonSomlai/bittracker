@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, net, protocol, shell } from "electron";
+import { app, BrowserWindow, ipcMain, net, protocol, session, shell } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { isDatabaseOpen, lockDatabase, openDatabase, setDatabaseLockListener } from "./src/auth/db";
@@ -39,7 +39,6 @@ protocol.registerSchemesAsPrivileged([
       secure: true,
       standard: true,
       supportFetchAPI: true,
-      corsEnabled: true,
     },
   },
 ]);
@@ -88,6 +87,7 @@ function createWindow() {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   });
 
@@ -103,9 +103,8 @@ function createWindow() {
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("http://") || url.startsWith("https://")) {
       void shell.openExternal(url);
-      return { action: "deny" };
     }
-    return { action: "allow" };
+    return { action: "deny" };
   });
 
   mainWindow.on("close", () => {
@@ -120,6 +119,19 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  session.defaultSession.webRequest.onHeadersReceived(
+    { urls: ["app://*/*"] },
+    (details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Content-Security-Policy": [
+            "default-src 'none'; script-src 'self' app: 'unsafe-inline'; style-src 'self' app: 'unsafe-inline'; img-src 'self' app: data:; font-src 'self' app: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'",
+          ],
+        },
+      });
+    },
+  );
   applyDevNetworkFromPreferences();
   if (isDevEnvironment()) {
     console.log(`[bittrack] dev network: ${getNetworkId()}`);
