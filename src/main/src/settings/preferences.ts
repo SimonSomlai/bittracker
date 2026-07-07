@@ -106,6 +106,13 @@ export function saveDevNetwork(network: BitcoinNetworkId) {
     throw new Error("Network switching is only available in development");
   }
 
+  // Validate before touching the in-memory runtime network. Without this an
+  // out-of-enum value would flow into getNetworkId() and make
+  // ESPLORA_API_URLS[getNetworkId()] undefined, throwing on the next lookup.
+  if (network !== "mainnet" && network !== "testnet") {
+    throw new Error(`Invalid network: ${network}`);
+  }
+
   savePreferences({ devNetwork: network });
   setRuntimeNetwork(network);
 }
