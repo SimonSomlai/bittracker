@@ -49,7 +49,7 @@ const WALLET_METHODS: WalletMethod[] = [
   },
   {
     id: "manual",
-    label: "Xpub",
+    label: "Xpub/Zpub/Ypub",
     description: "Paste a watch key",
     namePlaceholder: "My wallet",
     imageSrc: "/wallets/xpub.png",
@@ -291,7 +291,7 @@ export function AddWalletDialog({ open, onOpenChange, onAdded }: AddWalletDialog
                       setXpub(next);
                       setConnectState(isValidXpub(next) ? "ready" : "idle");
                     }}
-                    placeholder="xpub… or zpub…"
+                    placeholder="xpub, zpub or ypub"
                   />
                 </div>
               ) : null}

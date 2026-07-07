@@ -30,6 +30,9 @@ importers:
       bip32:
         specifier: 4.0.0
         version: 4.0.0
+      bs58check:
+        specifier: 3.0.1
+        version: 3.0.1
       tiny-secp256k1:
         specifier: 2.2.3
         version: 2.2.3
