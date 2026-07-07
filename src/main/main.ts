@@ -117,10 +117,7 @@ function createWindow() {
     return { action: "deny" };
   });
 
-  // Constrain top-level navigation to the app's own origin(s). setWindowOpenHandler
-  // only governs new windows; without this, an in-place navigation (window.location,
-  // a same-tab link, a form submit) to a remote page would reload with the preload
-  // bridge still attached, handing that origin the full window.bittrack API.
+  // Constrain top-level navigation to the app's own origin(s)
   const isAllowedNavigation = (url: string) => {
     if (url.startsWith(`${APP_PROTOCOL}://`)) return true;
     const devUrl = process.env.ELECTRON_RENDERER_URL;
