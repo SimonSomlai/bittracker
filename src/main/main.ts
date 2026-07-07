@@ -69,7 +69,9 @@ function registerRendererProtocol() {
     }
 
     const filePath = path.normalize(path.join(rendererRoot, pathname.replace(/^\/+/, "")));
-    if (!filePath.startsWith(rendererRoot)) {
+    // Enforce a path-separator boundary so a sibling directory whose name merely
+    // shares the rendererRoot prefix (e.g. "client-extra") cannot be served.
+    if (filePath !== rendererRoot && !filePath.startsWith(rendererRoot + path.sep)) {
       return new Response("Forbidden", { status: 403 });
     }
 
@@ -113,6 +115,23 @@ function createWindow() {
       void shell.openExternal(url);
     }
     return { action: "deny" };
+  });
+
+  // Constrain top-level navigation to the app's own origin(s)
+  const isAllowedNavigation = (url: string) => {
+    if (url.startsWith(`${APP_PROTOCOL}://`)) return true;
+    const devUrl = process.env.ELECTRON_RENDERER_URL;
+    return Boolean(devUrl && url.startsWith(devUrl));
+  };
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (!isAllowedNavigation(url)) {
+      event.preventDefault();
+    }
+  });
+  mainWindow.webContents.on("will-redirect", (event, url) => {
+    if (!isAllowedNavigation(url)) {
+      event.preventDefault();
+    }
   });
 
   mainWindow.on("close", () => {

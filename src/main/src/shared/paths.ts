@@ -10,7 +10,7 @@ export function getDevUserDataDir() {
 }
 
 export function getProdUserDataDir() {
-  return path.join(process.resourcesPath, PROD_DATA_DIR_NAME);
+  return path.join(app.getPath("userData"), PROD_DATA_DIR_NAME);
 }
 
 export function getUserDataDir() {

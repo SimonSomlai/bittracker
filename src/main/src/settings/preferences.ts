@@ -106,6 +106,11 @@ export function saveDevNetwork(network: BitcoinNetworkId) {
     throw new Error("Network switching is only available in development");
   }
 
+  // Ensure network is set  
+  if (network !== "mainnet" && network !== "testnet") {
+    throw new Error(`Invalid network: ${network}`);
+  }
+
   savePreferences({ devNetwork: network });
   setRuntimeNetwork(network);
 }
