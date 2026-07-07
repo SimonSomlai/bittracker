@@ -1,6 +1,6 @@
 # BitTracker
 
-Bitcoin accounting desktop app - Privacy first.
+Simple Bitcoin accounting desktop app - Privacy first.
 
 ![Graph](docs/graph.png)
 
@@ -10,9 +10,13 @@ Bitcoin accounting desktop app - Privacy first.
 
 # Features
 
-- Track multiple Hardware wallets (Ledger, Trezor & Xpub support)
-- All data stored encrypted at rest on your device
-- Sync uses BlockStream API over Tor (no ip-logging), custom Esplora API configurable
+- Tracks multiple wallets in read-only mode (Ledger, Trezor & Xpub support)
+- Anonymously gets all transactions (no accounts, no trackers, uses tor)
+- Shows your portfolio value over time
+- Calculates total and per-transaction profit/loss
+- Set your custom cost-basis per transaction
+- Export everything to CSV or XLSX for your accountant
+- Support for Dollar, Pound and Euro
 
 ## Development
 
