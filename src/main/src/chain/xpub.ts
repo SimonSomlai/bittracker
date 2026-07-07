@@ -9,51 +9,40 @@ export const GAP_LIMIT = 20;
 
 export { getDerivationPath };
 
-function convertVariantXpubToStandard(xpub: string, network: bitcoin.Network) {
-  const trimmed = xpub.trim();
+const SLIP132_PUBLIC_VERSIONS = new Map<number, number>([
+  [0x0488b21e, 0x0488b21e], // xpub
+  [0x049d7cb2, 0x0488b21e], // ypub
+  [0x0295b43f, 0x0488b21e], // Ypub
+  [0x04b24746, 0x0488b21e], // zpub
+  [0x02aa7ed3, 0x0488b21e], // Zpub
+  [0x043587cf, 0x043587cf], // tpub
+  [0x044a5262, 0x043587cf], // upub
+  [0x024289ef, 0x043587cf], // Upub
+  [0x045f1cf6, 0x043587cf], // vpub
+  [0x02575483, 0x043587cf], // Vpub
+]);
 
-  // Fast accept common standard prefixes
-  const prefix = trimmed.slice(0, 4).toLowerCase();
-  if (prefix === "xpub" || prefix === "tpub") return trimmed;
+function convertVariantXpubToStandard(xpub: string) {
+  const trimmed = xpub.trim();
 
   try {
     const payload = Buffer.from(bs58check.decode(trimmed));
     const version = payload.readUInt32BE(0);
+    const canonicalVersion = SLIP132_PUBLIC_VERSIONS.get(version);
 
-    // Mapping variant versions -> standard xpub/tpub version
-    const mainnetMap: Record<number, number> = {
-      0x049d7cb2: 0x0488b21e, // ypub -> xpub
-      0x04b24746: 0x0488b21e, // zpub -> xpub
-    };
-    const testnetMap: Record<number, number> = {
-      0x044a5262: 0x043587cf, // upub -> tpub
-      0x045f1cf6: 0x043587cf, // vpub -> tpub
-    };
-
-    const targetVersion = network === bitcoin.networks.bitcoin ? 0x0488b21e : 0x043587cf;
-
-    let newVersion: number | undefined;
-    if (network === bitcoin.networks.bitcoin && mainnetMap[version])
-      newVersion = mainnetMap[version];
-    if (network === bitcoin.networks.testnet && testnetMap[version])
-      newVersion = testnetMap[version];
-
-    // If the version is already the target (or unrecognized), just return the trimmed input
-    if (!newVersion) {
-      // If this is a mainnet variant but already an xpub-like version, return as-is
-      if (version === targetVersion) return trimmed;
+    if (canonicalVersion == null || canonicalVersion === version) {
       return trimmed;
     }
 
-    payload.writeUInt32BE(newVersion, 0);
+    payload.writeUInt32BE(canonicalVersion, 0);
     return bs58check.encode(payload);
-  } catch (err) {
+  } catch {
     return trimmed;
   }
 }
 
 function normalizeXpub(xpub: string) {
-  return convertVariantXpubToStandard(xpub, getBitcoinNetwork());
+  return convertVariantXpubToStandard(xpub);
 }
 
 export function validateXpub(xpub: string) {
