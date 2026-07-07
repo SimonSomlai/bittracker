@@ -31,7 +31,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "postinstall": "npm_config_target=38.8.6 npm_config_arch=arm64 npm_config_target_arch=arm64 npm_config_disturl=https://electronjs.org/headers npm_config_runtime=electron pnpm rebuild better-sqlite3-multiple-ciphers tiny-secp256k1 argon2 usb node-hid"
+    "postinstall": "npm_config_target=39.8.1 npm_config_arch=arm64 npm_config_target_arch=arm64 npm_config_disturl=https://electronjs.org/headers npm_config_runtime=electron pnpm rebuild better-sqlite3-multiple-ciphers tiny-secp256k1 argon2 usb node-hid"
   },
   "dependencies": {
     "@ledgerhq/hw-app-btc": "11.2.1",
@@ -39,7 +39,7 @@
     "@trezor/connect": "9.7.3",
     "argon2": "0.41.1",
     "better-sqlite3-multiple-ciphers": "12.11.1",
-    "bip32": "4.0.0",
+    "bip32": "5.0.1",
     "bs58check": "3.0.1",
     "tiny-secp256k1": "2.2.3",
     "tslib": "2.8.1",
@@ -61,7 +61,7 @@
     "bitcoinjs-lib": "6.1.7",
     "concurrently": "9.0.1",
     "date-fns": "4.4.0",
-    "electron": "38.8.6",
+    "electron": "39.8.1",
     "electron-builder": "26.15.3",
     "esbuild": "0.25.0",
     "eslint": "9.39.4",
