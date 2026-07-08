@@ -150,11 +150,24 @@ export function TransactionsTable({
       if (selectedWallets.size > 0 && !selectedWallets.has(row.walletName)) return false;
       if (!query) return true;
 
-      return (
+      if (
         row.walletName.toLowerCase().includes(query) ||
         row.txid.toLowerCase().includes(query) ||
         row.address.toLowerCase().includes(query)
-      );
+      ) {
+        return true;
+      }
+
+      // numeric search: integer query → partial sat match; decimal query → exact BTC match
+      const numericQuery = query.replace(/[,\s]/g, "");
+      if (/^\d+$/.test(numericQuery)) {
+        if (String(Math.abs(row.btcAmount)).includes(numericQuery)) return true;
+      } else if (/^\d*\.\d+$/.test(numericQuery)) {
+        const asSats = Math.round(parseFloat(numericQuery) * 1e8);
+        if (Number.isFinite(asSats) && asSats === Math.abs(row.btcAmount)) return true;
+      }
+
+      return false;
     });
   }, [transactions, search, flowFilter, selectedWallets, dateFrom, dateTo]);
 
@@ -337,7 +350,7 @@ export function TransactionsTable({
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Name, address, txid…"
+            placeholder="Name, address, txid, sats…"
             className="h-8 rounded-full pl-8 text-xs"
             disabled={loading}
           />
@@ -434,7 +447,7 @@ export function TransactionsTable({
                       onSort={toggleSort}
                       className="w-[7rem] tabular-nums whitespace-nowrap"
                     >
-                      Amount
+                      {btcUnit === "sats" ? "Sats" : "BTC"}
                     </SortableHead>
                     <SortableHead
                       column="valueAtDate"
@@ -919,7 +932,7 @@ function ValueAtDateCell({
   };
 
   const commitEdit = async () => {
-    const parsed = parseCustomValueInput(draft);
+    const parsed = parseCustomValueInput(draft, currency);
     if (!parsed.ok) {
       toast({
         title: "Invalid amount",

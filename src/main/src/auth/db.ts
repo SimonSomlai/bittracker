@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   wallet_id INTEGER NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
   txid TEXT NOT NULL,
   date TEXT NOT NULL,
-  btc_amount REAL NOT NULL,
+  btc_amount INTEGER NOT NULL,
   block_height INTEGER NOT NULL DEFAULT 0,
   address TEXT NOT NULL,
   address_index INTEGER NOT NULL DEFAULT 0,
@@ -38,9 +38,9 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 CREATE TABLE IF NOT EXISTS price_cache (
   date TEXT PRIMARY KEY,
-  usd_price REAL NOT NULL,
-  eur_price REAL,
-  gbp_price REAL
+  usd_price INTEGER NOT NULL,
+  eur_price INTEGER,
+  gbp_price INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_transactions_wallet_date ON transactions(wallet_id, date);
@@ -53,9 +53,12 @@ export function openDatabase(dbKeyHex: string) {
     db.close();
   }
   db = new Database(getDbPath());
+
   // Dev debugging
+  // console.log(getDbPath(), `x'${dbKeyHex}'`);
   // db.pragma(`cipher='sqlcipher'`);
   // db.pragma(`legacy=4`);
+
   db.pragma(`key = "x'${dbKeyHex}'"`);
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA_SQL);

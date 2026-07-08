@@ -5,13 +5,13 @@ import fs from "node:fs";
 import { cleanupAllWalletRbfDuplicates, inputOutpoints, serializeOutpoints } from "../chain/rbf";
 import { EsploraClient, fetchCachedTx, type EsploraTx } from "../chain/esplora";
 import type { FiatCurrency } from "../shared/currency";
-import { parseCurrency, roundFiatAmount } from "../shared/currency";
+import { parseCurrency } from "../shared/currency";
 import { getDatabase } from "../auth/db";
 import { ensurePricesForDates, getCachedPrice, getCurrentBtcPrice } from "../market/price";
 
 type TransactionFlow = "inflow" | "outflow";
 
-export interface DashboardRow {
+export interface RawTransactionRow {
   id: number;
   walletId: number;
   walletName: string;
@@ -24,10 +24,6 @@ export interface DashboardRow {
   priceAtDate: number | null;
   valueAtDate: number | null;
   customValueAtDate: number | null;
-  costBasis: number | null;
-  cumulativeBtc: number;
-  portfolioValue: number | null;
-  unrealizedGain: number | null;
   blockHeight: number;
 }
 
@@ -44,8 +40,6 @@ type StoredTransactionRow = {
   block_height: number;
   custom_value_at_date: string | null;
 };
-
-type MappedTransactionRow = ReturnType<typeof mapRawTransactionRow>;
 
 const DEDUPED_TRANSACTIONS_SQL = `
   SELECT
@@ -67,7 +61,7 @@ const DEDUPED_TRANSACTIONS_SQL = `
     GROUP BY wallet_id, txid
   ) deduped ON deduped.id = t.id
   JOIN wallets w ON w.id = t.wallet_id
-  ORDER BY t.date ASC, t.id ASC
+  ORDER BY t.date ASC, t.flow ASC, t.id ASC
 `;
 
 type CustomValuesAtDate = Partial<Record<FiatCurrency, number>>;
@@ -86,7 +80,7 @@ function parseCustomValuesAtDate(raw: string | null | undefined): CustomValuesAt
 function readCustomValueAtDate(raw: string | null | undefined, currency: FiatCurrency) {
   const value = parseCustomValuesAtDate(raw)[currency];
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  return roundFiatAmount(value);
+  return value;
 }
 
 function serializeCustomValuesAtDate(values: CustomValuesAtDate) {
@@ -100,7 +94,7 @@ function serializeCustomValuesAtDate(values: CustomValuesAtDate) {
   return JSON.stringify(Object.fromEntries(entries));
 }
 
-function mapRawTransactionRow(row: StoredTransactionRow, currency: FiatCurrency) {
+function mapRawTransactionRow(row: StoredTransactionRow, currency: FiatCurrency): RawTransactionRow {
   const dateKey = row.date.slice(0, 10);
   const priceAtDate = getCachedPrice(dateKey, currency);
   const flow =
@@ -111,6 +105,7 @@ function mapRawTransactionRow(row: StoredTransactionRow, currency: FiatCurrency)
         : "inflow";
   const magnitude = Math.abs(row.btc_amount);
   const signedAmount = flow === "outflow" ? -magnitude : magnitude;
+  const valueAtDate = priceAtDate != null ? Math.round((magnitude * priceAtDate) / 100_000_000) : null;
 
   return {
     id: row.id,
@@ -123,64 +118,9 @@ function mapRawTransactionRow(row: StoredTransactionRow, currency: FiatCurrency)
     address: row.address,
     voutIndex: row.vout_index,
     priceAtDate,
+    valueAtDate,
     customValueAtDate: readCustomValueAtDate(row.custom_value_at_date, currency),
     blockHeight: row.block_height,
-  };
-}
-
-function recomputeDashboardRows(
-  rows: Array<
-    MappedTransactionRow & {
-      valueAtDate?: number | null;
-      costBasis?: number | null;
-      cumulativeBtc?: number;
-      portfolioValue?: number | null;
-      unrealizedGain?: number | null;
-    }
-  >,
-) {
-  let cumulativeBtc = 0;
-  let totalCostBasis = 0;
-
-  const dashboardRows = rows.map((row) => {
-    const magnitude = Math.abs(row.btcAmount);
-    const computedValueAtDate =
-      row.priceAtDate != null ? roundFiatAmount(magnitude * row.priceAtDate) : null;
-    const basisValueAtDate = row.customValueAtDate ?? computedValueAtDate;
-    let costBasis: number | null = null;
-
-    if (row.flow === "inflow") {
-      costBasis = basisValueAtDate;
-      if (costBasis != null) {
-        totalCostBasis = roundFiatAmount(totalCostBasis + costBasis);
-      }
-    } else if (cumulativeBtc > 0) {
-      const avgCost = totalCostBasis / cumulativeBtc;
-      costBasis = roundFiatAmount(row.btcAmount * avgCost);
-      totalCostBasis = roundFiatAmount(totalCostBasis + costBasis);
-    }
-
-    cumulativeBtc += row.btcAmount;
-    const portfolioValue =
-      row.priceAtDate != null ? roundFiatAmount(cumulativeBtc * row.priceAtDate) : null;
-    const unrealizedGain =
-      portfolioValue != null ? roundFiatAmount(portfolioValue - totalCostBasis) : null;
-
-    return {
-      ...row,
-      valueAtDate: computedValueAtDate,
-      customValueAtDate: row.customValueAtDate ?? null,
-      costBasis,
-      cumulativeBtc,
-      portfolioValue,
-      unrealizedGain,
-    } satisfies DashboardRow;
-  });
-
-  return {
-    rows: dashboardRows,
-    totalBtc: cumulativeBtc,
-    totalCostBasis: roundFiatAmount(totalCostBasis),
   };
 }
 
@@ -188,16 +128,17 @@ function loadStoredTransactionRows(db: Database.Database) {
   return db.prepare(DEDUPED_TRANSACTIONS_SQL).all() as StoredTransactionRow[];
 }
 
-export function buildDashboardRows(currency: FiatCurrency = "USD", transactionIds?: number[]) {
+export function getRawTransactionRows(currency: FiatCurrency = "USD", transactionIds?: number[]): RawTransactionRow[] {
   const rows = loadStoredTransactionRows(getDatabase());
   const idSet = transactionIds && transactionIds.length > 0 ? new Set(transactionIds) : null;
   const filteredRows = idSet ? rows.filter((row) => idSet.has(row.id)) : rows;
-
-  return recomputeDashboardRows(filteredRows.map((row) => mapRawTransactionRow(row, currency)));
+  return filteredRows.map((row) => mapRawTransactionRow(row, currency));
 }
 
 function transactionCurrentValue(btcAmount: number, currentBtcPrice: number | null) {
-  return currentBtcPrice != null ? Math.abs(btcAmount) * currentBtcPrice : null;
+  return currentBtcPrice != null
+    ? Math.round((Math.abs(btcAmount) * currentBtcPrice) / 100_000_000)
+    : null;
 }
 
 function transactionUnrealizedGain(valueAtDate: number | null, currentValue: number | null) {
@@ -226,37 +167,36 @@ function exportHeaders(currency: FiatCurrency, btcUnit: BtcDisplayUnit) {
 function roundSignedBtc(value: number, btcUnit: BtcDisplayUnit) {
   const sign = Math.sign(value);
   if (sign === 0) return 0;
-  if (btcUnit === "sats") return sign * Math.round(Math.abs(value) * 1e8);
-  return sign * (Math.round(Math.abs(value) * 1e8) / 1e8);
+  if (btcUnit === "sats") return value; // already integer satoshis
+  return sign * (Math.abs(value) / 1e8); // convert to BTC
 }
 
 function formatExportFiat(value: number) {
-  return roundFiatAmount(value).toFixed(2);
+  return value.toFixed(2);
 }
 
 function exportRowValues(
-  row: DashboardRow,
+  row: RawTransactionRow,
   currentBtcPrice: number | null,
   btcUnit: BtcDisplayUnit,
 ) {
-  const currentValue = transactionCurrentValue(row.btcAmount, currentBtcPrice);
-  const valueAtDate = row.customValueAtDate ?? row.valueAtDate;
-  const unrealizedGain = transactionUnrealizedGain(valueAtDate, currentValue);
-  const roundedCurrentValue = currentValue != null ? roundFiatAmount(currentValue) : null;
+  const currentValueCents = transactionCurrentValue(row.btcAmount, currentBtcPrice);
+  const valueAtDateCents = row.customValueAtDate ?? row.valueAtDate;
+  const unrealizedGainCents = transactionUnrealizedGain(valueAtDateCents, currentValueCents);
 
   return {
     date: row.date,
     flow: row.flow,
     walletName: row.walletName,
     btcAmount: roundSignedBtc(row.btcAmount, btcUnit),
-    valueAtDate: valueAtDate != null ? roundFiatAmount(valueAtDate) : null,
-    currentValue: roundedCurrentValue,
-    unrealizedGain: unrealizedGain != null ? roundFiatAmount(unrealizedGain) : null,
+    valueAtDate: valueAtDateCents != null ? valueAtDateCents / 100 : null,
+    currentValue: currentValueCents != null ? currentValueCents / 100 : null,
+    unrealizedGain: unrealizedGainCents != null ? unrealizedGainCents / 100 : null,
   };
 }
 
 function exportRowCsvValues(
-  row: DashboardRow,
+  row: RawTransactionRow,
   currentBtcPrice: number | null,
   btcUnit: BtcDisplayUnit,
 ) {
@@ -316,7 +256,7 @@ async function rowsForExport(
   const txDates = db.prepare("SELECT date FROM transactions").all() as Array<{ date: string }>;
   await ensurePricesForDates(txDates.map((row) => row.date));
   const currentBtcPrice = await getCurrentBtcPrice(currency);
-  const { rows } = buildDashboardRows(currency, transactionIds);
+  const rows = getRawTransactionRows(currency, transactionIds);
   return { rows, currency, currentBtcPrice, btcUnit };
 }
 
@@ -424,7 +364,7 @@ export function setCustomValueAtDate(
     if (!Number.isFinite(parsed) || parsed < 0) {
       return { ok: false as const, error: "Enter a valid amount" };
     }
-    nextValue = roundFiatAmount(parsed);
+    nextValue = Math.round(parsed); // already in cents from the renderer
   }
 
   const values = parseCustomValuesAtDate(row.custom_value_at_date);

@@ -3,6 +3,7 @@
 
 set appPath to "/Applications/BitTracker.app"
 set dataPath to (POSIX path of (path to library folder from user domain)) & "Application Support/BitTracker"
+set devDataPath to (POSIX path of (path to library folder from user domain)) & "Application Support/bittrack-dev"
 
 try
 	display dialog "This will permanently delete BitTracker and all locally stored data (wallets, transaction history, settings). This cannot be undone." ¬
@@ -21,11 +22,11 @@ try
 end try
 
 try
-	do shell script "rm -rf " & quoted form of dataPath & " " & quoted form of appPath
+	do shell script "rm -rf " & quoted form of dataPath & " " & quoted form of devDataPath & " " & quoted form of appPath
 on error
 	-- Retry with admin privileges if plain rm failed (system-wide install)
 	try
-		do shell script "rm -rf " & quoted form of dataPath & " " & quoted form of appPath ¬
+		do shell script "rm -rf " & quoted form of dataPath & " " & quoted form of devDataPath & " " & quoted form of appPath ¬
 			with administrator privileges
 	on error errMsg
 		display dialog "Uninstall failed: " & errMsg ¬

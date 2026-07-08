@@ -66,7 +66,7 @@ export function deriveWalletAddress(xpub: string, chain: 0 | 1, index: number) {
     throw new Error("Failed to derive public key");
   }
   const { address } = bitcoin.payments.p2wpkh({
-    pubkey: child.publicKey,
+    pubkey: Buffer.from(child.publicKey),
     network,
   });
   if (!address) {

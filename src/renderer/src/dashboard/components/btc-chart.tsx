@@ -31,7 +31,6 @@ import {
 } from "@/utils/bittrack-api";
 import { type FiatCurrency } from "@/src/settings/utils/currency";
 import { cn } from "@/utils/cn";
-import { formatDate, gainLossLabel } from "@/utils/format";
 
 const CHART_PLOT_CLASS = cn(
   "[&_.recharts-surface]:fill-transparent",
@@ -125,7 +124,7 @@ function ChartTooltip({
   series: ChartSeriesPoint[];
   flowHoverDate: string | null;
 }) {
-  const { money, btc, btcAmountLabel, incognito } = usePrivacyDisplay();
+  const { money, btc, btcAmountLabel, incognito, date } = usePrivacyDisplay();
 
   const hoveredDate = typeof label === "string" ? label : payload?.[0]?.payload?.date;
   const dateKey =
@@ -144,7 +143,7 @@ function ChartTooltip({
 
   return (
     <div className="min-w-[14rem] rounded-lg border border-border/80 bg-card/95 px-3 py-2.5 text-sm shadow-xl backdrop-blur-sm">
-      <div className="font-medium">{formatDate(dateKey)}</div>
+      <div className="font-medium">{date(dateKey)}</div>
       <div className="mt-1.5 space-y-1 text-xs">
         <TooltipMetric label="BTC Price" value={money(point.btcPrice, currency)} />
         <TooltipMetric label="Portfolio value" value={money(point.portfolioValue, currency)} />
@@ -159,7 +158,7 @@ function ChartTooltip({
           <div className="type-overline mb-1.5">Transactions</div>
           <ul className="space-y-1 text-xs">
             {markers.map((marker, index) => {
-              const fiatValue = marker.btcPrice != null ? marker.btcAmount * marker.btcPrice : null;
+              const fiatValue = marker.btcPrice != null ? Math.round((marker.btcAmount * marker.btcPrice) / 100_000_000) : null;
               const isInflow = marker.flow === "inflow";
 
               return (
@@ -277,15 +276,41 @@ export function BtcChart({
   const axisTick = { fill: colors.tick, fontSize: 12 };
   const yAxisLabelFontSize = 14;
   const chart = normalizeChartData(rawChart);
+  const [hiddenFlows, setHiddenFlows] = useState<Set<"inflow" | "outflow">>(() => new Set());
+  const [hiddenLines, setHiddenLines] = useState<Set<"btcPrice" | "portfolioValue">>(() => new Set());
+
+  function toggleFlow(flow: "inflow" | "outflow") {
+    setHiddenFlows((prev) => {
+      const next = new Set(prev);
+      if (next.has(flow)) next.delete(flow);
+      else next.add(flow);
+      return next;
+    });
+  }
+
+  function toggleLine(line: "btcPrice" | "portfolioValue") {
+    setHiddenLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(line)) next.delete(line);
+      else next.add(line);
+      return next;
+    });
+  }
+
+  const visibleMarkers = useMemo(
+    () => chart.markers.filter((m) => !hiddenFlows.has(m.flow)),
+    [chart.markers, hiddenFlows],
+  );
+
   const markersByDate = useMemo(() => {
     const map = new Map<string, ChartMarker[]>();
-    for (const marker of chart.markers) {
+    for (const marker of visibleMarkers) {
       const existing = map.get(marker.date) ?? [];
       existing.push(marker);
       map.set(marker.date, existing);
     }
     return map;
-  }, [chart.markers]);
+  }, [visibleMarkers]);
 
   const flowFillByDate = useMemo(() => {
     const map = new Map<string, string>();
@@ -451,7 +476,15 @@ export function BtcChart({
       <h2 className="text-2xl font-semibold tracking-tight">Portfolio</h2>
       <Card className="overflow-hidden">
         <CardContent className="space-y-6 p-6">
-          {!loading && chart.series.length > 0 ? <ChartLegend currency={currency} /> : null}
+          {!loading && chart.series.length > 0 ? (
+            <ChartLegend
+            currency={currency}
+            hiddenFlows={hiddenFlows}
+            onToggleFlow={toggleFlow}
+            hiddenLines={hiddenLines}
+            onToggleLine={toggleLine}
+          />
+          ) : null}
           <div className="h-[42vh] min-h-[300px]">
             {loading ? (
               <ChartPlotSkeleton />
@@ -547,6 +580,7 @@ export function BtcChart({
                       connectNulls
                       isAnimationActive={false}
                       activeDot={false}
+                      hide={hiddenLines.has("btcPrice")}
                       style={{
                         strokeLinecap: "round",
                         strokeLinejoin: "round",
@@ -567,6 +601,7 @@ export function BtcChart({
                         stroke: colors.dotStroke,
                         strokeWidth: 1.5,
                       }}
+                      hide={hiddenLines.has("portfolioValue")}
                       style={{
                         strokeLinecap: "round",
                         strokeLinejoin: "round",
@@ -638,31 +673,87 @@ export function BtcChart({
   );
 }
 
-function ChartLegend({ currency, className }: { currency: FiatCurrency; className?: string }) {
+function ChartLegend({
+  currency,
+  hiddenFlows,
+  onToggleFlow,
+  hiddenLines,
+  onToggleLine,
+  className,
+}: {
+  currency: FiatCurrency;
+  hiddenFlows: Set<"inflow" | "outflow">;
+  onToggleFlow: (flow: "inflow" | "outflow") => void;
+  hiddenLines: Set<"btcPrice" | "portfolioValue">;
+  onToggleLine: (line: "btcPrice" | "portfolioValue") => void;
+  className?: string;
+}) {
   return (
     <div className={cn("flex flex-wrap items-center justify-center gap-x-5 gap-y-2", className)}>
       <LegendItem
         label="Inflows"
         icon={<ArrowDownLeft className="h-3.5 w-3.5 shrink-0 text-btc" aria-hidden />}
+        muted={hiddenFlows.has("inflow")}
+        onClick={() => onToggleFlow("inflow")}
       />
       <LegendItem
         label="Outflows"
         icon={<ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-red-500" aria-hidden />}
+        muted={hiddenFlows.has("outflow")}
+        onClick={() => onToggleFlow("outflow")}
       />
-      <LegendItem label="BTC Price" icon={<span className="h-px w-4 bg-btc" aria-hidden />} />
+      <LegendItem
+        label="BTC Price"
+        icon={<span className="h-px w-4 bg-btc" aria-hidden />}
+        muted={hiddenLines.has("btcPrice")}
+        onClick={() => onToggleLine("btcPrice")}
+      />
       <LegendItem
         label={`Portfolio Value (${currency})`}
         icon={<span className="h-px w-4 bg-portfolio" aria-hidden />}
+        muted={hiddenLines.has("portfolioValue")}
+        onClick={() => onToggleLine("portfolioValue")}
       />
     </div>
   );
 }
 
-function LegendItem({ label, icon }: { label: string; icon: ReactNode }) {
-  return (
-    <span className="type-overline flex shrink-0 items-center gap-2 whitespace-nowrap">
+function LegendItem({
+  label,
+  icon,
+  muted,
+  onClick,
+}: {
+  label: string;
+  icon: ReactNode;
+  muted?: boolean;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
       {icon}
       {label}
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "window-no-drag type-overline flex shrink-0 items-center gap-2 whitespace-nowrap transition-opacity hover:opacity-70",
+          muted && "opacity-40",
+        )}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <span className="type-overline flex shrink-0 items-center gap-2 whitespace-nowrap">
+      {content}
     </span>
   );
 }
@@ -676,9 +767,14 @@ function ChartBottomBar({
   currency: FiatCurrency;
   summaryGain: { text: string; className: string };
 }) {
-  const { money, btc, incognito } = usePrivacyDisplay();
+  const { money, btc, incognito, gainLossLabel } = usePrivacyDisplay();
 
   const statMoney = (value: number) => (!incognito && value === 0 ? "—" : money(value, currency));
+
+  const avgCostBasis =
+    summary.totalBtc > 0
+      ? Math.round((summary.totalCostBasis / summary.totalBtc) * 100_000_000)
+      : null;
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -704,8 +800,9 @@ function ChartBottomBar({
             className="px-4 text-center sm:border-r sm:border-border"
           />
           <ChartStat
-            label="Cost basis"
-            value={statMoney(summary.totalCostBasis)}
+            label="Average Cost Basis"
+            value={money(avgCostBasis, currency)}
+            tooltip={`Average cost per BTC held: total cost basis of remaining holdings divided by current BTC balance. Outflows reduce the average cost basis.`}
             className="px-4 text-center"
           />
         </div>

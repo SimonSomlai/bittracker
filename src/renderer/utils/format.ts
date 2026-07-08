@@ -1,36 +1,28 @@
 import type { FiatCurrency } from "@/src/settings/utils/currency";
 
-export function formatBtc(value: number) {
-  return Math.abs(value).toLocaleString(undefined, {
+const SATS_PER_BTC = 100_000_000;
+
+export function formatBtc(satoshis: number) {
+  return (Math.abs(satoshis) / SATS_PER_BTC).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 8,
   });
 }
 
-const SATS_PER_BTC = 100_000_000;
-
-function btcToSats(value: number) {
-  return Math.round(Math.abs(value) * SATS_PER_BTC);
-}
-
-export function formatSats(value: number) {
-  return btcToSats(value).toLocaleString(undefined, {
+export function formatSats(satoshis: number) {
+  return Math.abs(satoshis).toLocaleString(undefined, {
     maximumFractionDigits: 0,
   });
 }
 
-export function formatMoney(value: number | null | undefined, currency: FiatCurrency = "USD") {
-  if (value == null || Number.isNaN(value)) return "—";
-  return value.toLocaleString(undefined, {
+export function formatMoney(cents: number | null | undefined, currency: FiatCurrency = "USD") {
+  if (cents == null || Number.isNaN(cents)) return "—";
+  return (cents / 100).toLocaleString(undefined, {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-}
-
-export function roundFiatAmount(value: number) {
-  return Number(value.toFixed(2));
 }
 
 export function formatDate(value: string) {

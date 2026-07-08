@@ -33,7 +33,7 @@ export function transactionCurrentValue(
   currentBtcPrice: number | null | undefined,
 ) {
   if (currentBtcPrice == null || Number.isNaN(currentBtcPrice)) return null;
-  return Math.abs(btcAmount) * currentBtcPrice;
+  return Math.round((Math.abs(btcAmount) * currentBtcPrice) / 100_000_000); // cents
 }
 
 export function transactionUnrealizedGain(

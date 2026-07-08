@@ -48,7 +48,7 @@ function netAmountForAddress(tx: EsploraTx, address: string) {
   }
 
   return {
-    btcAmount: sats / 100_000_000,
+    satoshis: sats,
     voutIndex: sats > 0 ? primaryVout : null,
   };
 }
@@ -84,20 +84,20 @@ function aggregateWalletTransaction(
   let bestOutflow: (WalletAddressRef & { net: number }) | null = null;
 
   for (const ref of walletAddresses) {
-    const { btcAmount, voutIndex } = netAmountForAddress(tx, ref.address);
-    if (btcAmount === 0) continue;
+    const { satoshis, voutIndex } = netAmountForAddress(tx, ref.address);
+    if (satoshis === 0) continue;
 
-    net += btcAmount;
+    net += satoshis;
 
-    if (btcAmount > 0 && (!bestInflow || btcAmount > bestInflow.net)) {
-      bestInflow = { ...ref, net: btcAmount, voutIndex };
+    if (satoshis > 0 && (!bestInflow || satoshis > bestInflow.net)) {
+      bestInflow = { ...ref, net: satoshis, voutIndex };
     }
-    if (btcAmount < 0 && (!bestOutflow || Math.abs(btcAmount) > Math.abs(bestOutflow.net))) {
-      bestOutflow = { ...ref, net: btcAmount };
+    if (satoshis < 0 && (!bestOutflow || Math.abs(satoshis) > Math.abs(bestOutflow.net))) {
+      bestOutflow = { ...ref, net: satoshis };
     }
   }
 
-  if (Math.abs(net) < 1e-10) return null;
+  if (net === 0) return null;
 
   const primary = net >= 0 ? (bestInflow ?? bestOutflow) : (bestOutflow ?? bestInflow);
 

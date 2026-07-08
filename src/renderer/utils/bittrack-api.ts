@@ -20,7 +20,9 @@ interface Wallet {
   createdAt: string;
 }
 
-export interface TransactionRow {
+export type ChartFlow = "inflow" | "outflow";
+
+export interface RawTransactionRow {
   id: number;
   walletId: number;
   walletName: string;
@@ -33,11 +35,17 @@ export interface TransactionRow {
   priceAtDate: number | null;
   valueAtDate: number | null;
   customValueAtDate: number | null;
-  costBasis: number | null;
+  blockHeight: number;
+}
+
+export interface TransactionRow extends RawTransactionRow {
   cumulativeBtc: number;
   portfolioValue: number | null;
-  unrealizedGain: number | null;
-  blockHeight: number;
+}
+
+export interface PriceSeriesPoint {
+  date: string;
+  btcPrice: number | null;
 }
 
 export interface ChartSeriesPoint {
@@ -46,8 +54,6 @@ export interface ChartSeriesPoint {
   portfolioValue: number | null;
   cumulativeBtc?: number | null;
 }
-
-export type ChartFlow = "inflow" | "outflow";
 
 export interface ChartMarker {
   date: string;
@@ -109,11 +115,11 @@ function signedBtcAmount(row: Record<string, unknown>, flow: ChartFlow): number 
   return flow === "outflow" ? -magnitude : magnitude;
 }
 
-function normalizeTransactionRow(row: Record<string, unknown>): TransactionRow {
+function normalizeRawTransactionRow(row: Record<string, unknown>): RawTransactionRow {
   const flow = resolveFlow(row);
   const btcAmount = signedBtcAmount(row, flow);
 
-  const normalized: TransactionRow = {
+  return {
     id: coerceNumber(row.id),
     walletId: coerceNumber(row.walletId ?? row.wallet_id),
     walletName: String(row.walletName ?? row.wallet_name ?? ""),
@@ -127,44 +133,35 @@ function normalizeTransactionRow(row: Record<string, unknown>): TransactionRow {
     valueAtDate: coerceNullableNumber(row.valueAtDate ?? row.value_at_date),
     customValueAtDate:
       coerceNullableNumber(row.customValueAtDate ?? row.custom_value_at_date) ?? null,
-    costBasis: coerceNullableNumber(row.costBasis ?? row.cost_basis),
-    cumulativeBtc: coerceNumber(row.cumulativeBtc ?? row.cumulative_btc),
-    portfolioValue: coerceNullableNumber(row.portfolioValue ?? row.portfolio_value),
-    unrealizedGain: coerceNullableNumber(row.unrealizedGain ?? row.unrealized_gain),
     blockHeight: coerceNumber(row.blockHeight ?? row.block_height),
   };
+}
 
-  return normalized;
+function dedupeTransactionRows(rows: RawTransactionRow[]): RawTransactionRow[] {
+  const byKey = new Map<string, RawTransactionRow>();
+  for (const row of rows) {
+    const key = `${row.walletId}:${row.txid}`;
+    const existing = byKey.get(key);
+    if (!existing || row.id > existing.id) byKey.set(key, row);
+  }
+  return Array.from(byKey.values()).sort((left, right) => {
+    const dateCmp = left.date.localeCompare(right.date);
+    if (dateCmp !== 0) return dateCmp;
+    if (left.flow !== right.flow) return left.flow === "inflow" ? -1 : 1;
+    return left.id - right.id;
+  });
 }
 
 /** Coerce IPC dashboard transaction payloads, preserving flow direction. */
-export function normalizeTransactionRows(raw: unknown): TransactionRow[] {
+export function normalizeRawTransactionRows(raw: unknown): RawTransactionRow[] {
   if (!Array.isArray(raw)) return [];
 
   const normalized = raw.flatMap((entry) => {
     if (!entry || typeof entry !== "object") return [];
-    return [normalizeTransactionRow(entry as Record<string, unknown>)];
+    return [normalizeRawTransactionRow(entry as Record<string, unknown>)];
   });
 
   return dedupeTransactionRows(normalized);
-}
-
-function dedupeTransactionRows(rows: TransactionRow[]): TransactionRow[] {
-  const byKey = new Map<string, TransactionRow>();
-
-  for (const row of rows) {
-    const key = `${row.walletId}:${row.txid}`;
-    const existing = byKey.get(key);
-    if (!existing || row.id > existing.id) {
-      byKey.set(key, row);
-    }
-  }
-
-  return Array.from(byKey.values()).sort((left, right) => {
-    const dateCmp = left.date.localeCompare(right.date);
-    if (dateCmp !== 0) return dateCmp;
-    return left.id - right.id;
-  });
 }
 
 /** Coerce IPC dashboard chart payloads into ChartData. */
@@ -202,10 +199,11 @@ export interface DashboardSummary {
 }
 
 export interface DashboardData {
-  summary: DashboardSummary;
-  transactions: TransactionRow[];
-  chart: ChartData;
+  priceSeries: PriceSeriesPoint[];
+  transactions: RawTransactionRow[];
+  currentBtcPrice: number | null;
   wallets: Wallet[];
+  currency: FiatCurrency;
 }
 
 export type TrezorUiRequest = {

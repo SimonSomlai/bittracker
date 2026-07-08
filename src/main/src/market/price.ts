@@ -37,12 +37,13 @@ function getDbCachedDay(dateKey: string): CachedDay | null {
   return row ?? null;
 }
 
-function getCachedPriceForCurrency(dateKey: string, currency: FiatCurrency) {
+function getCachedPriceForCurrency(dateKey: string, currency: FiatCurrency): number | null {
   const cached = getDbCachedDay(dateKey);
   const column = cacheColumn(currency);
   const dbPrice = cached?.[column];
-  if (dbPrice != null) return dbPrice;
-  return getBundledPrice(dateKey, currency);
+  if (dbPrice != null) return dbPrice; // already in cents
+  const bundled = getBundledPrice(dateKey, currency);
+  return bundled != null ? Math.round(bundled * 100) : null; // convert to cents
 }
 
 async function fetchPricesForDateFromCoinGecko(dateKey: string) {
@@ -102,9 +103,9 @@ function cacheDayPrices(dateKey: string, prices: Partial<Record<FiatCurrency, nu
     )
     .run(
       dateKey,
-      prices.USD ?? existing?.usd_price ?? 0,
-      prices.EUR ?? existing?.eur_price ?? null,
-      prices.GBP ?? existing?.gbp_price ?? null,
+      prices.USD != null ? Math.round(prices.USD * 100) : (existing?.usd_price ?? 0),
+      prices.EUR != null ? Math.round(prices.EUR * 100) : (existing?.eur_price ?? null),
+      prices.GBP != null ? Math.round(prices.GBP * 100) : (existing?.gbp_price ?? null),
     );
 }
 
@@ -131,10 +132,10 @@ export function resolvePriceSource(dateKey: string, currency: FiatCurrency) {
   const cached = getDbCachedDay(dateKey);
   const column = cacheColumn(currency);
   const dbPrice = cached?.[column];
-  if (dbPrice != null) return { price: dbPrice, source: "db" as const };
+  if (dbPrice != null) return { price: dbPrice, source: "db" as const }; // cents
 
   const bundled = getBundledPrice(dateKey, currency);
-  if (bundled != null) return { price: bundled, source: "bundled" as const };
+  if (bundled != null) return { price: Math.round(bundled * 100), source: "bundled" as const }; // cents
 
   return { price: null, source: "missing" as const };
 }
@@ -180,7 +181,10 @@ export async function getCurrentBtcPrice(currency: FiatCurrency = "USD") {
     if (prices.USD != null) {
       cacheDayPrices(today, enrichWithFx(today, prices));
     }
-    return prices[currency] ?? getCachedPriceForCurrency(today, currency);
+    const wholePrice = prices[currency];
+    return wholePrice != null
+      ? Math.round(wholePrice * 100)
+      : getCachedPriceForCurrency(today, currency);
   } catch {
     return getCachedPriceForCurrency(today, currency);
   }

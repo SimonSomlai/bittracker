@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useBtcUnit } from "@/src/settings/providers/btc-unit-provider";
 import type { FiatCurrency } from "@/src/settings/utils/currency";
-import { formatBtc, formatGainLoss, formatMoney, formatSats } from "@/utils/format";
+import { formatBtc, formatDate, formatGainLoss, formatMoney, formatSats, gainLossLabel } from "@/utils/format";
 
 const STORAGE_KEY = "bittrack-incognito";
 const HIDDEN_FIAT = "•••••";
@@ -96,6 +96,8 @@ export function usePrivacyDisplay() {
         }
         return `${sign}₿ ${formatBtc(value)}`;
       },
+      gainLossLabel: (value: number | null | undefined) => gainLossLabel(value),
+      date: (value: string) => formatDate(value),
     }),
     [incognito, btcUnit],
   );

@@ -8,8 +8,7 @@ import { useCurrency } from "@/src/settings/providers/currency-provider";
 import { useNetwork } from "@/src/settings/providers/network-provider";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  normalizeChartData,
-  normalizeTransactionRows,
+  normalizeRawTransactionRows,
   type DashboardData,
   type SyncProgress,
 } from "@/utils/bittrack-api";
@@ -25,25 +24,19 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-const emptyDashboard: DashboardData = {
-  summary: {
-    totalBtc: 0,
-    totalCostBasis: 0,
-    currentPortfolioValue: 0,
-    unrealizedGain: 0,
-    currentBtcPrice: null,
-    currency: "USD",
-  },
+const emptyRawDashboard: DashboardData = {
+  priceSeries: [],
   transactions: [],
-  chart: { series: [], markers: [] },
+  currentBtcPrice: null,
   wallets: [],
+  currency: "USD",
 };
 
 export function DashboardPage() {
   const { toast } = useToast();
   const { currency } = useCurrency();
   const { network } = useNetwork();
-  const [dashboard, setDashboard] = useState<DashboardData>(emptyDashboard);
+  const [rawDashboard, setRawDashboard] = useState<DashboardData>(emptyRawDashboard);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
@@ -54,16 +47,8 @@ export function DashboardPage() {
   );
 
   const dashboardView = useMemo(
-    () =>
-      deriveDashboardView(
-        {
-          transactions: dashboard.transactions,
-          chart: dashboard.chart,
-          summary: dashboard.summary,
-        },
-        selectedTransactionIds,
-      ),
-    [dashboard, selectedTransactionIds],
+    () => deriveDashboardView(rawDashboard, selectedTransactionIds),
+    [rawDashboard, selectedTransactionIds],
   );
 
   const refresh = useCallback(
@@ -74,10 +59,9 @@ export function DashboardPage() {
       }
       try {
         const data = await getBittrackApi().getDashboard(currency);
-        setDashboard({
+        setRawDashboard({
           ...data,
-          chart: normalizeChartData(data.chart),
-          transactions: normalizeTransactionRows(data.transactions),
+          transactions: normalizeRawTransactionRows(data.transactions),
         });
         setSelectedTransactionIds(new Set());
       } catch (error) {
@@ -185,7 +169,7 @@ export function DashboardPage() {
       <AppHeader
         syncing={syncing}
         syncProgress={syncProgress}
-        hasWallets={dashboard.wallets.length > 0}
+        hasWallets={rawDashboard.wallets.length > 0}
         onSync={handleSync}
         onAddWallet={() => setAddWalletOpen(true)}
       />
@@ -199,10 +183,10 @@ export function DashboardPage() {
             selectionActive={selectedTransactionIds.size > 0}
           />
           <TransactionsTable
-            transactions={dashboard.transactions}
-            connectedWalletNames={dashboard.wallets.map((wallet) => wallet.name)}
-            currency={dashboard.summary.currency}
-            currentBtcPrice={dashboard.summary.currentBtcPrice}
+            transactions={dashboardView.allTransactions}
+            connectedWalletNames={rawDashboard.wallets.map((wallet) => wallet.name)}
+            currency={rawDashboard.currency}
+            currentBtcPrice={rawDashboard.currentBtcPrice}
             loading={loading}
             selectedTransactionIds={selectedTransactionIds}
             onSelectedTransactionIdsChange={setSelectedTransactionIds}

@@ -9,6 +9,3 @@ export function parseCurrency(value: unknown): FiatCurrency {
   return DEFAULT_CURRENCY;
 }
 
-export function roundFiatAmount(value: number) {
-  return Number(value.toFixed(2));
-}

@@ -2,25 +2,42 @@ import type {
   ChartData,
   ChartMarker,
   ChartSeriesPoint,
+  DashboardData,
   DashboardSummary,
+  PriceSeriesPoint,
+  RawTransactionRow,
   TransactionRow,
 } from "@/utils/bittrack-api";
-import type { FiatCurrency } from "@/src/settings/utils/currency";
 import { transactionDateKey } from "@/src/dashboard/transactions-table/utils/date-keys";
-import { roundFiatAmount } from "@/utils/format";
 
-function resolveSelectedTransactions(
-  transactions: TransactionRow[],
-  selectedIds: ReadonlySet<number> | null | undefined,
-) {
-  if (!selectedIds || selectedIds.size === 0) return transactions;
-  return transactions.filter((row) => selectedIds.has(row.id));
+function addDays(dateKey: string, days: number): string {
+  const d = new Date(dateKey + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
-function recomputeTransactionRows(transactions: TransactionRow[]) {
-  const sorted = dedupeTransactionsByTxid(transactions).sort((left, right) => {
+function todayDateKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function eachDateKey(from: string, to: string): string[] {
+  if (from > to) return [];
+  const keys: string[] = [];
+  let cursor = from;
+  while (cursor <= to) {
+    keys.push(cursor);
+    cursor = addDays(cursor, 1);
+  }
+  return keys;
+}
+
+function recomputeTransactionRows(transactions: RawTransactionRow[]) {
+  const sorted = [...transactions].sort((left, right) => {
     const dateCmp = left.date.localeCompare(right.date);
     if (dateCmp !== 0) return dateCmp;
+    if (left.flow !== right.flow) {
+      return left.flow === "inflow" ? -1 : 1;
+    }
     return left.id - right.id;
   });
 
@@ -28,86 +45,33 @@ function recomputeTransactionRows(transactions: TransactionRow[]) {
   let totalCostBasis = 0;
 
   const rows = sorted.map((row) => {
-    const magnitude = Math.abs(row.btcAmount);
-    const signedAmount = row.btcAmount;
-    const priceAtDate = row.priceAtDate;
-    const computedValueAtDate =
-      priceAtDate != null ? roundFiatAmount(magnitude * priceAtDate) : null;
-    const basisValueAtDate = row.customValueAtDate ?? computedValueAtDate;
-    let costBasis: number | null = null;
+    const basisValueAtDate = row.customValueAtDate ?? row.valueAtDate;
 
     if (row.flow === "inflow") {
-      costBasis = basisValueAtDate;
-      if (costBasis != null) {
-        totalCostBasis = roundFiatAmount(totalCostBasis + costBasis);
-      }
+      if (basisValueAtDate != null) totalCostBasis += basisValueAtDate;
     } else if (cumulativeBtc > 0) {
-      const avgCost = totalCostBasis / cumulativeBtc;
-      costBasis = roundFiatAmount(signedAmount * avgCost);
-      totalCostBasis = roundFiatAmount(totalCostBasis + costBasis);
+      const deduction = Math.round((row.btcAmount / cumulativeBtc) * totalCostBasis);
+      totalCostBasis += deduction;
     }
 
-    cumulativeBtc += signedAmount;
+    cumulativeBtc += row.btcAmount;
     const portfolioValue =
-      priceAtDate != null ? roundFiatAmount(cumulativeBtc * priceAtDate) : null;
-    const unrealizedGain =
-      portfolioValue != null ? roundFiatAmount(portfolioValue - totalCostBasis) : null;
+      row.priceAtDate != null
+        ? Math.round((cumulativeBtc * row.priceAtDate) / 100_000_000)
+        : null;
 
-    return {
-      ...row,
-      valueAtDate: computedValueAtDate,
-      customValueAtDate: row.customValueAtDate ?? null,
-      costBasis,
-      cumulativeBtc,
-      portfolioValue,
-      unrealizedGain,
-    } satisfies TransactionRow;
+    return { ...row, cumulativeBtc, portfolioValue } satisfies TransactionRow;
   });
 
-  return { rows, totalBtc: cumulativeBtc, totalCostBasis: roundFiatAmount(totalCostBasis) };
+  return { rows, totalBtc: cumulativeBtc, totalCostBasis };
 }
 
-function dedupeTransactionsByTxid(transactions: TransactionRow[]) {
-  const byKey = new Map<string, TransactionRow>();
-
-  for (const row of transactions) {
-    const key = `${row.walletId}:${row.txid}`;
-    const existing = byKey.get(key);
-    if (!existing || row.id > existing.id) {
-      byKey.set(key, row);
-    }
-  }
-
-  return Array.from(byKey.values());
-}
-
-function buildSummaryForTransactions(
-  transactions: TransactionRow[],
+function buildChartFromRows(
+  rows: TransactionRow[],
+  priceSeries: PriceSeriesPoint[],
   currentBtcPrice: number | null,
-  currency: FiatCurrency,
-): DashboardSummary {
-  const { totalBtc, totalCostBasis } = recomputeTransactionRows(transactions);
-  const currentPortfolioValue =
-    currentBtcPrice != null ? roundFiatAmount(totalBtc * currentBtcPrice) : 0;
-  const unrealizedGain = roundFiatAmount(currentPortfolioValue - totalCostBasis);
-
-  return {
-    totalBtc,
-    totalCostBasis,
-    currentPortfolioValue,
-    unrealizedGain,
-    currentBtcPrice,
-    currency,
-  };
-}
-
-function buildChartForTransactions(
-  transactions: TransactionRow[],
-  baseSeries: ChartSeriesPoint[],
-  currentBtcPrice: number | null,
+  totalBtc: number,
 ): ChartData {
-  const { rows, totalBtc } = recomputeTransactionRows(transactions);
-
   const markers: ChartMarker[] = rows
     .filter((row) => row.btcAmount !== 0)
     .map((row) => ({
@@ -119,67 +83,107 @@ function buildChartForTransactions(
       walletName: row.walletName,
     }));
 
-  if (baseSeries.length === 0 || rows.length === 0) {
+  if (priceSeries.length === 0 || rows.length === 0) {
     return { series: [], markers };
   }
 
+  // Build a Map from date to btcPrice for fast lookup
+  const priceByDate = new Map(priceSeries.map((p) => [p.date, p.btcPrice]));
+
+  const firstDate = rows[0]!.date.slice(0, 10);
+  const today = todayDateKey();
+  const dateKeys = eachDateKey(firstDate, today);
+
   let txIndex = 0;
   let lastCumulative = 0;
-  const series = baseSeries.map((point) => {
-    while (txIndex < rows.length && transactionDateKey(rows[txIndex]!.date) <= point.date) {
+  let lastPrice: number | null = null;
+
+  const series: ChartSeriesPoint[] = dateKeys.map((dateKey) => {
+    while (txIndex < rows.length && rows[txIndex]!.date.slice(0, 10) <= dateKey) {
       lastCumulative = rows[txIndex]!.cumulativeBtc;
       txIndex += 1;
     }
 
+    let btcPrice = priceByDate.get(dateKey) ?? null;
+    // Forward-fill missing prices
+    if (btcPrice != null) {
+      lastPrice = btcPrice;
+    } else if (lastPrice != null) {
+      btcPrice = lastPrice;
+    }
+
     return {
-      ...point,
+      date: dateKey,
+      btcPrice,
+      portfolioValue:
+        btcPrice != null ? Math.round((lastCumulative * btcPrice) / 100_000_000) : null,
       cumulativeBtc: lastCumulative,
-      portfolioValue: point.btcPrice != null ? lastCumulative * point.btcPrice : null,
     };
   });
 
-  const today = baseSeries.at(-1)?.date;
-  if (today) {
-    const todayPoint = series.find((point) => point.date === today);
-    if (todayPoint) {
-      todayPoint.cumulativeBtc = totalBtc;
-      if (currentBtcPrice != null) {
-        todayPoint.btcPrice = currentBtcPrice;
-        todayPoint.portfolioValue = totalBtc * currentBtcPrice;
-      } else if (todayPoint.btcPrice != null) {
-        todayPoint.portfolioValue = totalBtc * todayPoint.btcPrice;
-      }
-    }
+  // Update or add today's point with currentBtcPrice
+  let todayPoint = series.find((point) => point.date === today);
+  if (!todayPoint) {
+    todayPoint = {
+      date: today,
+      btcPrice: currentBtcPrice,
+      portfolioValue: null,
+      cumulativeBtc: totalBtc,
+    };
+    series.push(todayPoint);
+    series.sort((left, right) => left.date.localeCompare(right.date));
+  }
+
+  todayPoint.cumulativeBtc = totalBtc;
+  if (currentBtcPrice != null) {
+    todayPoint.btcPrice = currentBtcPrice;
+    todayPoint.portfolioValue = Math.round((totalBtc * currentBtcPrice) / 100_000_000);
+  } else if (todayPoint.btcPrice != null) {
+    todayPoint.portfolioValue = Math.round((totalBtc * todayPoint.btcPrice) / 100_000_000);
   }
 
   return { series, markers };
 }
 
 export function deriveDashboardView(
-  dashboard: {
-    transactions: TransactionRow[];
-    chart: ChartData;
-    summary: DashboardSummary;
-  },
+  rawDashboard: DashboardData,
   selectedIds: ReadonlySet<number> | null | undefined,
-) {
-  const hasSelection = selectedIds != null && selectedIds.size > 0;
-  const transactions = resolveSelectedTransactions(
-    dashboard.transactions,
-    hasSelection ? selectedIds : null,
-  );
+): {
+  allTransactions: TransactionRow[];
+  summary: DashboardSummary;
+  chart: ChartData;
+} {
+  const { rows: allRows, totalBtc: allTotalBtc, totalCostBasis: allTotalCostBasis } = recomputeTransactionRows(rawDashboard.transactions);
 
-  return {
-    ...dashboard,
-    summary: buildSummaryForTransactions(
-      transactions,
-      dashboard.summary.currentBtcPrice,
-      dashboard.summary.currency,
-    ),
-    chart: buildChartForTransactions(
-      transactions,
-      dashboard.chart.series,
-      dashboard.summary.currentBtcPrice,
-    ),
+  const hasSelection = selectedIds != null && selectedIds.size > 0;
+
+  let viewRows = allRows;
+  let viewTotalBtc = allTotalBtc;
+  let viewTotalCostBasis = allTotalCostBasis;
+
+  if (hasSelection) {
+    const selectedRaw = rawDashboard.transactions.filter((row) => selectedIds.has(row.id));
+    const recomputed = recomputeTransactionRows(selectedRaw);
+    viewRows = recomputed.rows;
+    viewTotalBtc = recomputed.totalBtc;
+    viewTotalCostBasis = recomputed.totalCostBasis;
+  }
+
+  const { currentBtcPrice, currency } = rawDashboard;
+  const currentPortfolioValue =
+    currentBtcPrice != null ? Math.round((viewTotalBtc * currentBtcPrice) / 100_000_000) : 0;
+  const unrealizedGain = currentPortfolioValue - viewTotalCostBasis;
+
+  const summary: DashboardSummary = {
+    totalBtc: viewTotalBtc,
+    totalCostBasis: viewTotalCostBasis,
+    currentPortfolioValue,
+    unrealizedGain,
+    currentBtcPrice,
+    currency,
   };
+
+  const chart = buildChartFromRows(viewRows, rawDashboard.priceSeries, currentBtcPrice, viewTotalBtc);
+
+  return { allTransactions: allRows, summary, chart };
 }
