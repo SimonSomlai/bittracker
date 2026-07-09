@@ -34,6 +34,8 @@ import {
   getTorExitIp,
   isTorRunning,
   setTorStatusListener,
+  setTorRotatingListener,
+  setTorIpListener,
   startTor,
   stopTor,
   verifyTor,
@@ -176,6 +178,16 @@ app.whenReady().then(() => {
   setTorStatusListener((running) => {
     if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
       mainWindow.webContents.send("tor:status-changed", running);
+    }
+  });
+  setTorRotatingListener((rotating) => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send("tor:rotating-changed", rotating);
+    }
+  });
+  setTorIpListener((ip) => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send("tor:ip-changed", ip);
     }
   });
   startTor().catch((err) => {

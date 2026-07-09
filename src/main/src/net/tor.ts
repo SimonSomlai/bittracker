@@ -16,13 +16,24 @@ const STABLE_RUN_MS = 60_000;
 let torProcess: ChildProcessWithoutNullStreams | null = null;
 let torReady: Promise<void> | null = null;
 let statusListener: ((running: boolean) => void) | null = null;
+let rotatingListener: ((rotating: boolean) => void) | null = null;
+let ipListener: ((ip: string) => void) | null = null;
 let lastVerifiedIp: string | null = null;
+let controlCookie: string | null = null;
 let intentionalStop = false;
 let restartAttempts = 0;
 let torStartedAt = 0;
 
 export function setTorStatusListener(fn: (running: boolean) => void) {
   statusListener = fn;
+}
+
+export function setTorRotatingListener(fn: (rotating: boolean) => void) {
+  rotatingListener = fn;
+}
+
+export function setTorIpListener(fn: (ip: string) => void) {
+  ipListener = fn;
 }
 
 function killExistingTorInstances() {
@@ -57,6 +68,25 @@ function torDataDir() {
   const dir = path.join(getUserDataDir(), "tor-data");
   fs.mkdirSync(dir, { recursive: true });
   return dir;
+}
+
+function waitForControlCookie(): Promise<string> {
+  const cookiePath = path.join(torDataDir(), "control_auth_cookie");
+  const deadline = Date.now() + START_TIMEOUT_MS;
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      if (fs.existsSync(cookiePath)) {
+        resolve(fs.readFileSync(cookiePath).toString("hex"));
+        return;
+      }
+      if (Date.now() > deadline) {
+        reject(new Error(`Timed out waiting for control_auth_cookie`));
+        return;
+      }
+      setTimeout(attempt, POLL_INTERVAL_MS);
+    };
+    attempt();
+  });
 }
 
 function waitForSocksPort(): Promise<void> {
@@ -143,8 +173,9 @@ export function startTor(): Promise<void> {
 
     waitForSocksPort()
       .then(() => session.defaultSession.setProxy({ proxyRules: `socks5://127.0.0.1:${SOCKS_PORT}` }))
-      .then(() => verifyTor())
-      .then(() => {
+      .then(() => Promise.all([verifyTor(), waitForControlCookie()]))
+      .then(([, cookie]) => {
+        controlCookie = cookie;
         torStartedAt = Date.now();
         statusListener?.(true);
         resolve();
@@ -164,6 +195,7 @@ export function stopTor() {
   torProcess = null;
   torReady = null;
   lastVerifiedIp = null;
+  controlCookie = null;
   statusListener?.(false);
 }
 
@@ -186,6 +218,48 @@ export async function verifyTor(): Promise<{ isTor: boolean; ip: string }> {
     console.error(`[tor] WARNING: traffic is NOT going through Tor! IP: ${data.IP}`);
   }
   return { isTor: data.IsTor, ip: data.IP };
+}
+
+function rotateTorCircuit(): Promise<void> {
+  if (!controlCookie) return Promise.reject(new Error("Control cookie not available"));
+  const cookie = controlCookie;
+  return new Promise((resolve, reject) => {
+    const sock = createConnection({ port: CONTROL_PORT, host: "127.0.0.1" });
+    let buf = "";
+    sock.on("data", (d: Buffer) => {
+      buf += d.toString();
+      if (buf.includes("250 OK\r\n250 OK")) { sock.end(); resolve(); }
+      else if (buf.match(/^5\d\d /m)) { sock.end(); reject(new Error(buf.trim())); }
+    });
+    sock.on("connect", () => sock.write(`AUTHENTICATE ${cookie}\r\nSIGNAL NEWNYM\r\n`));
+    sock.on("error", reject);
+  });
+}
+
+const NEWNYM_POLL_MS = 2_000;
+const NEWNYM_TIMEOUT_MS = 25_000;
+
+export async function rotateUntilNewIp(): Promise<void> {
+  const prevIp = lastVerifiedIp;
+  rotatingListener?.(true);
+  try {
+    await rotateTorCircuit();
+    const deadline = Date.now() + NEWNYM_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, NEWNYM_POLL_MS));
+      const { ip } = await verifyTor();
+      if (ip !== prevIp) {
+        console.log(`[tor] circuit rotated: ${prevIp} → ${ip}`);
+        ipListener?.(ip);
+        return;
+      }
+    }
+    console.warn("[tor] circuit rotation timed out, continuing on current IP");
+  } catch (e) {
+    console.warn("[tor] circuit rotation failed:", e);
+  } finally {
+    rotatingListener?.(false);
+  }
 }
 
 export async function torFetch(url: string, init?: RequestInit): Promise<Response> {

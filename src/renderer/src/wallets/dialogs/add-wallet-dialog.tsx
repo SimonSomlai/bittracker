@@ -304,6 +304,9 @@ export function AddWalletDialog({ open, onOpenChange, onAdded }: AddWalletDialog
                       id="walletName"
                       value={name}
                       onChange={(event) => setName(event.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !saving) void saveWallet();
+                      }}
                       placeholder={selected.namePlaceholder}
                       autoFocus
                     />

@@ -67,27 +67,35 @@ export function SecuritySettingsDialog({
             Optional custom Esplora indexer for wallet sync on this device.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 py-2">
-          <Label htmlFor="esplora-url">Esplora API (optional)</Label>
-          <Input
-            id="esplora-url"
-            disabled={loading || saving}
-            value={esploraBaseUrl}
-            onChange={(event) => setEsploraBaseUrl(event.target.value)}
-            placeholder="https://your-esplora.example/api"
-          />
-          <p className="text-xs text-muted-foreground">
-            Self-hosted Esplora base URL (HTTPS, or HTTP on localhost) for syncing for full privacy.
-          </p>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button onClick={() => void handleSave()} disabled={loading || saving}>
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSave();
+          }}
+          className="space-y-4"
+        >
+          <div className="space-y-2">
+            <Label htmlFor="esplora-url">Esplora API (optional)</Label>
+            <Input
+              id="esplora-url"
+              disabled={loading || saving}
+              value={esploraBaseUrl}
+              onChange={(event) => setEsploraBaseUrl(event.target.value)}
+              placeholder="https://your-esplora.example/api"
+            />
+            <p className="text-xs text-muted-foreground">
+              Self-hosted Esplora base URL (HTTPS, or HTTP on localhost) for syncing for full privacy.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading || saving}>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

@@ -206,8 +206,8 @@ export function DashboardPage() {
           <DialogHeader>
             <DialogTitle>Syncing wallet</DialogTitle>
             <DialogDescription>
-              Scanning the blockchain for your transactions. This may take 2–3 minutes depending on
-              your transaction history.
+              Scanning the blockchain for new transactions. This may take 2–3 minutes depending on
+              your transaction history and internet speed.
             </DialogDescription>
           </DialogHeader>
           <Button variant="outline" onClick={() => setSyncInfoOpen(false)}>

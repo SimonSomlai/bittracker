@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { BUILD_INFO, buildCommitUrl, buildReleaseUrl } from "@/src/layout/utils/build-info";
 import { pageShellClass } from "@/src/layout/utils/electron-chrome";
 import { cn } from "@/utils/cn";
 
 function useTorStatus() {
   const [status, setStatus] = useState<{ running: boolean; exitIp: string | null } | null>(null);
+  const [rotating, setRotating] = useState(false);
 
   useEffect(() => {
     const api = window.bittrack;
@@ -16,13 +17,28 @@ function useTorStatus() {
       .then(setStatus)
       .catch(() => setStatus({ running: false, exitIp: null }));
 
-    if (!api.onTorStatusChange) return;
-    return api.onTorStatusChange((running) =>
-      setStatus((prev) => ({ running, exitIp: running ? (prev?.exitIp ?? null) : null })),
-    );
+    const cleanups: (() => void)[] = [];
+
+    if (api.onTorStatusChange) {
+      cleanups.push(
+        api.onTorStatusChange((running) =>
+          setStatus((prev) => ({ running, exitIp: running ? (prev?.exitIp ?? null) : null })),
+        ),
+      );
+    }
+    if (api.onTorRotatingChange) {
+      cleanups.push(api.onTorRotatingChange(setRotating));
+    }
+    if (api.onTorIpChange) {
+      cleanups.push(
+        api.onTorIpChange((ip) => setStatus((prev) => (prev ? { ...prev, exitIp: ip } : prev))),
+      );
+    }
+
+    return () => cleanups.forEach((fn) => fn());
   }, []);
 
-  return status;
+  return { status, rotating };
 }
 
 export function AppFooter({ className }: { className?: string }) {
@@ -30,7 +46,7 @@ export function AppFooter({ className }: { className?: string }) {
   const releaseUrl = buildReleaseUrl(BUILD_INFO);
   const isDevBuild = import.meta.env.DEV;
   const hasCommit = BUILD_INFO.commit !== "dev";
-  const torStatus = useTorStatus();
+  const { status: torStatus, rotating: torRotating } = useTorStatus();
 
   return (
     <footer
@@ -74,11 +90,19 @@ export function AppFooter({ className }: { className?: string }) {
           {torStatus?.running ? (
             <>
               <span className="mx-1.5 opacity-50">·</span>
-              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                <ShieldCheck className="h-3 w-3" />
-                Tor Connected
+              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-emerald-600 dark:text-emerald-400">
+                {torRotating ? (
+                  <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-3 w-3 shrink-0" />
+                )}
+                {torRotating ? "Tor rotating..." : "Tor Connected"}
                 {torStatus.exitIp ? (
-                  <span className="opacity-70">· {torStatus.exitIp}</span>
+                  torRotating ? (
+                    <Loader2 className="h-3 w-3 shrink-0 animate-spin opacity-70" />
+                  ) : (
+                    <span className="opacity-70">· {torStatus.exitIp}</span>
+                  )
                 ) : null}
               </span>
             </>

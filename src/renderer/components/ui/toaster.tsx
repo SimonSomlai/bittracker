@@ -10,14 +10,14 @@ import {
 import { ToastContext, useToastState } from "@/components/ui/use-toast";
 
 export function Toaster({ children }: { children: ReactNode }) {
-  const { messages, toast } = useToastState();
+  const { messages, toast, dismiss } = useToastState();
 
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
       <ToastProvider>
         {messages.map((message) => (
-          <Toast key={message.id} open>
+          <Toast key={message.id} open onOpenChange={(open) => { if (!open) dismiss(message.id); }}>
             <div className="grid gap-1">
               <ToastTitle>{message.title}</ToastTitle>
               {message.description ? (

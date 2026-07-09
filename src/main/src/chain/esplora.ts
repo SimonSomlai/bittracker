@@ -103,13 +103,22 @@ export class EsploraClient {
     return response.json() as Promise<EsploraTx[]>;
   }
 
-  async getAllAddressTxs(address: string) {
+  async getAllAddressTxs(address: string, knownTxids?: Set<string>) {
     const txs: EsploraTx[] = [];
     let lastSeenTxid: string | undefined;
 
     while (true) {
       const page = await this.getAddressTxs(address, lastSeenTxid);
       if (page.length === 0) break;
+
+      if (knownTxids) {
+        const cutoff = page.findIndex((tx) => knownTxids.has(tx.txid));
+        if (cutoff !== -1) {
+          txs.push(...page.slice(0, cutoff));
+          break;
+        }
+      }
+
       txs.push(...page);
       if (page.length < 25) break;
       lastSeenTxid = page[page.length - 1]?.txid;

@@ -22,8 +22,13 @@ export function useToast() {
 
 export function useToastState() {
   const [messages, setMessages] = React.useState<ToastMessage[]>([]);
+
   const toast = React.useCallback((message: Omit<ToastMessage, "id">) => {
     setMessages([{ ...message, id: Date.now() }]);
+  }, []);
+
+  const dismiss = React.useCallback((id: number) => {
+    setMessages((current) => current.filter((m) => m.id !== id));
   }, []);
 
   React.useEffect(() => {
@@ -34,5 +39,5 @@ export function useToastState() {
     return () => window.clearTimeout(timer);
   }, [messages]);
 
-  return { messages, toast };
+  return { messages, toast, dismiss };
 }

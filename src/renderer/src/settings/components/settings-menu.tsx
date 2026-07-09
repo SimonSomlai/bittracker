@@ -139,7 +139,7 @@ export function SettingsMenu() {
             </>
           ) : null}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setSecurityOpen(true)}>
+          <DropdownMenuItem onSelect={() => setTimeout(() => setSecurityOpen(true), 0)}>
             <Globe className="mr-2 h-4 w-4 shrink-0 opacity-70" />
             Blockchain API
           </DropdownMenuItem>

@@ -3,6 +3,7 @@ import type { BrowserWindow } from "electron";
 import { EsploraClient, EsploraRateLimitError, fetchCachedTx, type EsploraTx } from "./esplora";
 import { inputOutpoints, pickRbfWinner, serializeOutpoints, sharesInputOutpoints } from "./rbf";
 import { deriveWalletAddress, GAP_LIMIT } from "./xpub";
+import { rotateUntilNewIp } from "../net/tor";
 
 export type SyncProgress = {
   current: number;
@@ -180,42 +181,84 @@ function mergeAddressHistory(
   return nextHeight;
 }
 
+const PHASE1_CONCURRENCY = 10; // concurrent address fetches for known address range
+const SCAN_BATCH_SIZE = 5;     // indexes fetched in parallel during gap-limit scan
+
 async function discoverWalletActivity(
   wallet: WalletRecord,
   client: EsploraClient,
+  knownTxids: Set<string>,
   onProgress?: (highestIndex: number, highestHeight: number) => void,
 ) {
-  let index = 0;
-  let consecutiveEmpty = 0;
+  const isIncremental = wallet.last_used_index >= 0;
   let highestIndex = wallet.last_used_index;
   let highestHeight = wallet.last_synced_height;
   const walletAddresses: WalletAddressRef[] = [];
   const txMeta = new Map<string, TxMeta>();
 
-  while (consecutiveEmpty < GAP_LIMIT) {
-    let indexHasActivity = false;
-
-    for (const chain of [0, 1] as const) {
-      const address = deriveWalletAddress(wallet.xpub, chain, index);
-      walletAddresses.push({ address, addressIndex: index });
-
-      const history = await client.getAllAddressTxs(address);
-      if (history.length > 0) {
-        indexHasActivity = true;
-        highestIndex = Math.max(highestIndex, index);
+  // Phase 1 (incremental only): re-check known address range for new txs only.
+  // Fetch PHASE1_CONCURRENCY addresses at a time in parallel.
+  if (isIncremental) {
+    type AddrEntry = { address: string; addressIndex: number };
+    const addrs: AddrEntry[] = [];
+    for (let idx = 0; idx <= wallet.last_used_index; idx++) {
+      for (const chain of [0, 1] as const) {
+        const address = deriveWalletAddress(wallet.xpub, chain, idx);
+        walletAddresses.push({ address, addressIndex: idx });
+        addrs.push({ address, addressIndex: idx });
       }
+    }
+    for (let i = 0; i < addrs.length; i += PHASE1_CONCURRENCY) {
+      const chunk = addrs.slice(i, i + PHASE1_CONCURRENCY);
+      const results = await Promise.all(
+        chunk.map(({ address }) => client.getAllAddressTxs(address, knownTxids)),
+      );
+      for (const history of results) {
+        highestHeight = mergeAddressHistory(txMeta, history, highestHeight);
+      }
+    }
+  }
 
-      highestHeight = mergeAddressHistory(txMeta, history, highestHeight);
+  // Phase 2: gap-limit scan for new addresses. Fetch SCAN_BATCH_SIZE indexes
+  // (2 addresses each) in parallel, then process results in order.
+  let index = isIncremental ? wallet.last_used_index + 1 : 0;
+  let consecutiveEmpty = 0;
+
+  outer: while (consecutiveEmpty < GAP_LIMIT) {
+    type BatchEntry = { index: number; address: string };
+    const batch: BatchEntry[] = [];
+    for (let bi = 0; bi < SCAN_BATCH_SIZE; bi++) {
+      for (const chain of [0, 1] as const) {
+        const address = deriveWalletAddress(wallet.xpub, chain, index + bi);
+        walletAddresses.push({ address, addressIndex: index + bi });
+        batch.push({ index: index + bi, address });
+      }
     }
 
-    if (indexHasActivity) {
-      consecutiveEmpty = 0;
-      onProgress?.(highestIndex, highestHeight);
-    } else {
-      consecutiveEmpty += 1;
+    const histories = await Promise.all(
+      batch.map(({ address }) => client.getAllAddressTxs(address)),
+    );
+
+    for (let bi = 0; bi < SCAN_BATCH_SIZE; bi++) {
+      let indexHasActivity = false;
+      for (let ci = 0; ci < 2; ci++) {
+        const history = histories[bi * 2 + ci]!;
+        if (history.length > 0) {
+          indexHasActivity = true;
+          highestIndex = Math.max(highestIndex, index + bi);
+        }
+        highestHeight = mergeAddressHistory(txMeta, history, highestHeight);
+      }
+      if (indexHasActivity) {
+        consecutiveEmpty = 0;
+        onProgress?.(highestIndex, highestHeight);
+      } else {
+        consecutiveEmpty += 1;
+        if (consecutiveEmpty >= GAP_LIMIT) break outer;
+      }
     }
 
-    index += 1;
+    index += SCAN_BATCH_SIZE;
   }
 
   return { walletAddresses, txMeta, highestIndex, highestHeight };
@@ -261,6 +304,9 @@ export async function syncWallets() {
   emitSyncProgress({ current: 0, total: 0, phase: "scanning" });
 
   for (const wallet of wallets) {
+    // Rotate to a fresh Tor circuit before every wallet so the Esplora server
+    // cannot correlate addresses across wallets by IP.
+    await rotateUntilNewIp();
     const knownTxids = new Set(
       (existingTxidsForWallet.all(wallet.id) as Array<{ txid: string }>).map((row) => row.txid),
     );
@@ -277,7 +323,7 @@ export async function syncWallets() {
     });
 
     try {
-      const discovered = await discoverWalletActivity(wallet, client, (index, height) => {
+      const discovered = await discoverWalletActivity(wallet, client, knownTxids, (index, height) => {
         highestIndex = index;
         highestHeight = height;
         updateWallet.run(index, height, wallet.id);

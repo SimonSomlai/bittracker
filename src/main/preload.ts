@@ -121,6 +121,10 @@ const torApi = {
     ipcRenderer.invoke("tor:verify") as Promise<{ isTor: boolean; ip: string }>,
   onTorStatusChange: (callback: (running: boolean) => void) =>
     onChannel("tor:status-changed", (running: boolean) => callback(running)),
+  onTorRotatingChange: (callback: (rotating: boolean) => void) =>
+    onChannel("tor:rotating-changed", (rotating: boolean) => callback(rotating)),
+  onTorIpChange: (callback: (ip: string) => void) =>
+    onChannel("tor:ip-changed", (ip: string) => callback(ip)),
 };
 
 const trezorUiApi = {
