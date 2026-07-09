@@ -23,6 +23,14 @@ export function getDbPath() {
   return path.join(getUserDataDir(), "bittrack.db");
 }
 
+export function generatePassword(length = 20): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*";
+  const bytes = randomBytes(length);
+  return Array.from(bytes)
+    .map((b) => chars[b % chars.length])
+    .join("");
+}
+
 export function isInitialized() {
   return fs.existsSync(getMetaPath());
 }

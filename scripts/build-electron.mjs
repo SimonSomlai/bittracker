@@ -20,6 +20,7 @@ await esbuild.build({
   outExtension: { ".js": ".cjs" },
   external: electronExternals,
   sourcemap: true,
+  drop: ["console"],
 });
 
 for (const stale of ["main.js", "main.js.map", "preload.js", "preload.js.map"]) {

@@ -248,6 +248,7 @@ export interface BittrackApi {
   setupPassword: (password: string) => Promise<{ ok: boolean; error?: string }>;
   unlock: (password: string) => Promise<{ ok: boolean; error?: string }>;
   lock: () => Promise<void>;
+  generatePassword: () => Promise<string>;
   getPreferences: () => Promise<AppPreferences>;
   setPreferences: (partial: Partial<AppPreferences>) => Promise<{
     ok: boolean;

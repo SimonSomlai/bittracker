@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { isDatabaseOpen, lockDatabase, openDatabase, setDatabaseLockListener } from "./src/auth/db";
 import {
   deriveDbKey,
+  generatePassword,
   isInitialized,
   resetAppData,
   setupPassword,
@@ -234,8 +235,8 @@ ipcMain.handle("auth:is-unlocked", () => isDatabaseOpen());
 
 ipcMain.handle("auth:setup", async (_, password: string) => {
   try {
-    if (!password || password.length < 8) {
-      return { ok: false, error: "Password must be at least 8 characters" };
+    if (!password || password.length < 12) {
+      return { ok: false, error: "Password must be at least 12 characters" };
     }
     await setupPassword(password);
     const dbKey = await deriveDbKey(password);
@@ -270,6 +271,8 @@ ipcMain.handle("auth:lock", () => {
   lockDatabase();
   return { ok: true };
 });
+
+ipcMain.handle("auth:generate-password", () => generatePassword());
 
 ipcMain.handle("preferences:get", () => loadPreferences());
 
@@ -314,17 +317,10 @@ ipcMain.handle(
   },
 );
 
-ipcMain.handle("auth:reset", async (_, password: string) => {
+ipcMain.handle("auth:reset", async (_, confirmation: string) => {
   try {
-    if (!isInitialized()) {
-      return { ok: false, error: "App is not initialized" };
-    }
-    if (!password) {
-      return { ok: false, error: "Password is required" };
-    }
-    const valid = await verifyPassword(password);
-    if (!valid) {
-      return { ok: false, error: "Incorrect password" };
+    if (confirmation !== "DELETE") {
+      return { ok: false, error: 'Type "DELETE" to confirm' };
     }
     resetAppData();
     return { ok: true };

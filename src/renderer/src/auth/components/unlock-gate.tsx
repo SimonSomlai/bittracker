@@ -1,4 +1,4 @@
-import { Eye, EyeOff } from "lucide-react";
+import { Copy, Eye, EyeOff, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppLogo } from "@/src/layout/components/app-logo";
 import { AutoLockProvider } from "@/src/auth/providers/auto-lock-provider";
@@ -47,16 +47,24 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
     return api.onLocked(() => setUnlocked(false));
   }, []);
 
+  async function handleGeneratePassword() {
+    const api = getBittrackApi();
+    const generated = await api.generatePassword();
+    setPassword(generated);
+    setConfirmPassword(generated);
+    setShowPassword(true);
+  }
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitting(true);
     try {
       const api = getBittrackApi();
       if (!initialized) {
-        if (password.length < 8) {
+        if (password.length < 12) {
           toast({
             title: "Password too short",
-            description: "Use at least 8 characters.",
+            description: "Use at least 12 characters.",
           });
           return;
         }
@@ -68,6 +76,14 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
         if (!result.ok) {
           toast({ title: "Setup failed", description: result.error });
           return;
+        }
+        const clipboardText = await navigator.clipboard.readText().catch(() => "");
+        if (clipboardText !== password) {
+          void navigator.clipboard.writeText(password);
+          toast({
+            title: "Password copied to clipboard!",
+            description: "Store this in your password manager.",
+          });
         }
       } else {
         const result = await api.unlock(password);
@@ -139,13 +155,27 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
               <AppLogo size="lg" />
             </div>
             {!initialized && (
-              <p className="mt-3 text-sm text-muted-foreground">Create a secure password</p>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Create a secure password. Use at least 12 characters.
+              </p>
             )}
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  {!initialized && (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={handleGeneratePassword}
+                    >
+                      <Wand2 className="h-3 w-3" />
+                      Generate
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <Input
                     id="password"
@@ -154,24 +184,58 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
                     onChange={(event) => setPassword(event.target.value)}
                     autoFocus
                   />
-                  <button
-                    type="button"
-                    className="window-no-drag absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    onClick={() => setShowPassword((value) => !value)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <div className="window-no-drag absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
+                    {password && (
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(password);
+                          toast({
+                            title: "Password copied to clipboard!",
+                            description: "Store this in your password manager.",
+                          });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="text-muted-foreground"
+                      onClick={() => setShowPassword((value) => !value)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
               {!initialized ? (
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type={showPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                    />
+                    {confirmPassword && (
+                      <button
+                        type="button"
+                        className="window-no-drag absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(confirmPassword);
+                          toast({
+                            title: "Password copied to clipboard!",
+                            description: "Store this in your password manager.",
+                          });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : null}
               <Button className="w-full" disabled={submitting}>

@@ -4,8 +4,8 @@ import { BUILD_INFO, buildCommitUrl, buildReleaseUrl } from "@/src/layout/utils/
 import { pageShellClass } from "@/src/layout/utils/electron-chrome";
 import { cn } from "@/utils/cn";
 
-function useTorRunning() {
-  const [running, setRunning] = useState<boolean | null>(null);
+function useTorStatus() {
+  const [status, setStatus] = useState<{ running: boolean; exitIp: string | null } | null>(null);
 
   useEffect(() => {
     const api = window.bittrack;
@@ -13,14 +13,16 @@ function useTorRunning() {
 
     api
       .getTorStatus()
-      .then(({ running }) => setRunning(running))
-      .catch(() => setRunning(false));
+      .then(setStatus)
+      .catch(() => setStatus({ running: false, exitIp: null }));
 
     if (!api.onTorStatusChange) return;
-    return api.onTorStatusChange(setRunning);
+    return api.onTorStatusChange((running) =>
+      setStatus((prev) => ({ running, exitIp: running ? (prev?.exitIp ?? null) : null })),
+    );
   }, []);
 
-  return running;
+  return status;
 }
 
 export function AppFooter({ className }: { className?: string }) {
@@ -28,7 +30,7 @@ export function AppFooter({ className }: { className?: string }) {
   const releaseUrl = buildReleaseUrl(BUILD_INFO);
   const isDevBuild = import.meta.env.DEV;
   const hasCommit = BUILD_INFO.commit !== "dev";
-  const torRunning = useTorRunning();
+  const torStatus = useTorStatus();
 
   return (
     <footer
@@ -69,12 +71,15 @@ export function AppFooter({ className }: { className?: string }) {
               </a>
             </>
           ) : null}
-          {torRunning === true ? (
+          {torStatus?.running ? (
             <>
               <span className="mx-1.5 opacity-50">·</span>
               <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                 <ShieldCheck className="h-3 w-3" />
                 Tor Connected
+                {torStatus.exitIp ? (
+                  <span className="opacity-70">· {torStatus.exitIp}</span>
+                ) : null}
               </span>
             </>
           ) : null}

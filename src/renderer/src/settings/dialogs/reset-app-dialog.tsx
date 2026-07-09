@@ -20,12 +20,12 @@ interface ResetAppDialogProps {
 
 export function ResetAppDialog({ open, onOpenChange }: ResetAppDialogProps) {
   const { toast } = useToast();
-  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen) {
-      setPassword("");
+      setConfirmation("");
     }
     onOpenChange(nextOpen);
   }
@@ -34,7 +34,7 @@ export function ResetAppDialog({ open, onOpenChange }: ResetAppDialogProps) {
     event.preventDefault();
     setSubmitting(true);
     try {
-      const result = await getBittrackApi().resetApp(password);
+      const result = await getBittrackApi().resetApp(confirmation);
       if (!result.ok) {
         toast({ title: "Reset failed", description: result.error });
         return;
@@ -57,12 +57,13 @@ export function ResetAppDialog({ open, onOpenChange }: ResetAppDialogProps) {
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleReset}>
           <div className="space-y-2">
-            <Label htmlFor="reset-password">Confirm with your password</Label>
+            <Label htmlFor="reset-confirmation">
+              Type <span className="font-mono font-semibold">DELETE</span> to confirm
+            </Label>
             <Input
-              id="reset-password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              id="reset-confirmation"
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
               autoFocus
             />
           </div>
@@ -70,7 +71,11 @@ export function ResetAppDialog({ open, onOpenChange }: ResetAppDialogProps) {
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="destructive" disabled={submitting || !password}>
+            <Button
+              type="submit"
+              variant="destructive"
+              disabled={submitting || confirmation !== "DELETE"}
+            >
               <Trash2 className="h-4 w-4" />
               {submitting ? "Resetting…" : "Reset app"}
             </Button>

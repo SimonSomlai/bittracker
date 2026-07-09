@@ -28,9 +28,13 @@ function skipAppDepOptimization(): Plugin {
 
 export default defineConfig(({ command }) => {
   const buildInfo = readBuildInfo();
+  const isProd = command === "build";
 
   return {
-    base: command === "serve" ? "/" : "./",
+    base: isProd ? "./" : "/",
+    esbuild: {
+      drop: isProd ? ["console"] : [],
+    },
     define: {
       "import.meta.env.VITE_BUILD_INFO": JSON.stringify(buildInfo),
     },

@@ -23,7 +23,7 @@ export function useToast() {
 export function useToastState() {
   const [messages, setMessages] = React.useState<ToastMessage[]>([]);
   const toast = React.useCallback((message: Omit<ToastMessage, "id">) => {
-    setMessages((current) => [...current, { ...message, id: Date.now() }]);
+    setMessages([{ ...message, id: Date.now() }]);
   }, []);
 
   React.useEffect(() => {

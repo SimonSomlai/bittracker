@@ -60,6 +60,7 @@ const authApi = {
   unlock: (password: string) => ipcRenderer.invoke("auth:unlock", password),
   lock: () => ipcRenderer.invoke("auth:lock"),
   resetApp: (password: string) => ipcRenderer.invoke("auth:reset", password),
+  generatePassword: () => ipcRenderer.invoke("auth:generate-password") as Promise<string>,
 };
 
 const preferencesApi = {
