@@ -48,7 +48,12 @@ export async function setupPassword(password: string) {
     throw new Error("App is already initialized");
   }
   fs.mkdirSync(getUserDataDir(), { recursive: true });
-  const passwordHash = await argon2.hash(password);
+  const passwordHash = await argon2.hash(password, {
+    type: argon2.argon2id,
+    memoryCost: 46080,
+    timeCost: 3,
+    parallelism: 1,
+  });
   const dbKeySalt = randomBytes(32).toString("hex");
   writeMeta({ passwordHash, dbKeySalt });
 }

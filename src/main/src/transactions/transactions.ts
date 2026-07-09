@@ -262,10 +262,12 @@ async function rowsForExport(
 
 function escapeCsv(value: string | number | null | undefined) {
   const text = value == null ? "" : String(value);
-  if (/[",\n]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`;
+  // Prefix formula-injection triggers so spreadsheets treat the cell as text
+  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  if (/[",\n]/.test(safe)) {
+    return `"${safe.replace(/"/g, '""')}"`;
   }
-  return text;
+  return safe;
 }
 
 export async function exportCsv(
