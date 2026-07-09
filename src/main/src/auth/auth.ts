@@ -78,8 +78,8 @@ export async function deriveDbKey(password: string) {
     salt,
     hashLength: 32,
     raw: true,
-    memoryCost: 19456,
-    timeCost: 2,
+    memoryCost: 46080,
+    timeCost: 3,
     parallelism: 1,
   });
   return Buffer.from(hash).toString("hex");
