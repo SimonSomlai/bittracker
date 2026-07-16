@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS wallets (
   xpub TEXT NOT NULL UNIQUE,
   derivation_path TEXT NOT NULL DEFAULT 'm/84''/0''/0''',
   source TEXT NOT NULL CHECK(source IN ('ledger', 'trezor', 'manual')),
+  kind TEXT NOT NULL DEFAULT 'xpub' CHECK(kind IN ('xpub', 'descriptor')),
   last_used_index INTEGER NOT NULL DEFAULT -1,
   last_synced_height INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -62,6 +63,10 @@ export function openDatabase(dbKeyHex: string) {
   db.pragma(`key = "x'${dbKeyHex}'"`);
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA_SQL);
+  const tableInfo = db.prepare("PRAGMA table_info(wallets)").all() as { name: string }[];
+  if (!tableInfo.find((col) => col.name === "kind")) {
+    db.exec("ALTER TABLE wallets ADD COLUMN kind TEXT NOT NULL DEFAULT 'xpub' CHECK(kind IN ('xpub', 'descriptor'))");
+  }
   return db;
 }
 
@@ -102,6 +107,7 @@ export interface WalletRecord {
   xpub: string;
   derivation_path: string;
   source: "ledger" | "trezor" | "manual";
+  kind: "xpub" | "descriptor";
   last_used_index: number;
   last_synced_height: number;
   created_at: string;

@@ -3,7 +3,18 @@ import type { BrowserWindow } from "electron";
 import { EsploraClient, EsploraRateLimitError, fetchCachedTx, type EsploraTx } from "./esplora";
 import { inputOutpoints, pickRbfWinner, serializeOutpoints, sharesInputOutpoints } from "./rbf";
 import { deriveWalletAddress, GAP_LIMIT } from "./xpub";
+import { deriveMultisigAddress, parseMultisigDescriptor } from "./multisig";
 import { rotateUntilNewIp } from "../net/tor";
+import { WalletRecord } from "../auth/db";
+
+function deriveAddressForWallet(wallet: WalletRecord, chain: 0 | 1, index: number) {
+  if (wallet.kind === "descriptor") {
+    const parsed = parseMultisigDescriptor(wallet.xpub);
+    if (!parsed.ok) throw new Error(parsed.error);
+    return deriveMultisigAddress(parsed.parsed, chain, index);
+  }
+  return deriveWalletAddress(wallet.xpub, chain, index);
+}
 
 export type SyncProgress = {
   current: number;
@@ -202,12 +213,12 @@ async function discoverWalletActivity(
     type AddrEntry = { address: string; addressIndex: number };
     const addrs: AddrEntry[] = [];
     for (let idx = 0; idx <= wallet.last_used_index; idx++) {
-      for (const chain of [0, 1] as const) {
-        const address = deriveWalletAddress(wallet.xpub, chain, idx);
-        walletAddresses.push({ address, addressIndex: idx });
-        addrs.push({ address, addressIndex: idx });
+        for (const chain of [0, 1] as const) {
+          const address = deriveAddressForWallet(wallet, chain, idx);
+          walletAddresses.push({ address, addressIndex: idx });
+          addrs.push({ address, addressIndex: idx });
+        }
       }
-    }
     for (let i = 0; i < addrs.length; i += PHASE1_CONCURRENCY) {
       const chunk = addrs.slice(i, i + PHASE1_CONCURRENCY);
       const results = await Promise.all(
@@ -229,7 +240,7 @@ async function discoverWalletActivity(
     const batch: BatchEntry[] = [];
     for (let bi = 0; bi < SCAN_BATCH_SIZE; bi++) {
       for (const chain of [0, 1] as const) {
-        const address = deriveWalletAddress(wallet.xpub, chain, index + bi);
+        const address = deriveAddressForWallet(wallet, chain, index + bi);
         walletAddresses.push({ address, addressIndex: index + bi });
         batch.push({ index: index + bi, address });
       }
