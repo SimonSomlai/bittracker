@@ -54,14 +54,22 @@ const WALLET_METHODS: WalletMethod[] = [
     namePlaceholder: "My wallet",
     imageSrc: "/wallets/xpub.png",
   },
+  {
+    id: "multisig",
+    label: "Multisig",
+    description: "Watch-only multisig",
+    namePlaceholder: "My multisig",
+    imageSrc: "/wallets/xpub.png",
+  },
 ];
 
-function methodFor(source: WalletSource) {
+function methodFor(source: WalletSource | "multisig") {
   return WALLET_METHODS.find((method) => method.id === source) ?? WALLET_METHODS[0];
 }
 
-function isValidXpub(value: string) {
+function isValidKey(value: string, source: WalletSource | "multisig") {
   const trimmed = value.trim();
+  if (source === "multisig") return /^(wsh|sh)\(/i.test(trimmed);
   return /^(xpub|ypub|zpub|tpub|vpub)/i.test(trimmed) && trimmed.length > 20;
 }
 
@@ -70,7 +78,7 @@ export function AddWalletDialog({ open, onOpenChange, onAdded }: AddWalletDialog
   const [step, setStep] = useState<Step>("pick");
   const [name, setName] = useState("");
   const [xpub, setXpub] = useState("");
-  const [source, setSource] = useState<WalletSource>("ledger");
+  const [source, setSource] = useState<WalletSource | "multisig">("ledger");
   const [connectState, setConnectState] = useState<ConnectState>("idle");
   const [saving, setSaving] = useState(false);
 
@@ -149,7 +157,8 @@ export function AddWalletDialog({ open, onOpenChange, onAdded }: AddWalletDialog
       const result = await getBittrackApi().addWallet({
         name: name.trim() || undefined,
         xpub,
-        source,
+        source: source === "multisig" ? "manual" : (source as WalletSource),
+        kind: source === "multisig" ? "descriptor" : "xpub",
       });
       if (!result.ok) {
         toast({ title: "Could not save wallet", description: result.error });
@@ -228,7 +237,9 @@ export function AddWalletDialog({ open, onOpenChange, onAdded }: AddWalletDialog
                       ? "Connect your Ledger with a cable. Unlock your Ledger, open the Bitcoin app, and press 'Connect Ledger'."
                       : source === "trezor"
                         ? "Connect your Trezor with a cable and press 'Connect Trezor'."
-                        : "Paste your extended public key to track this wallet."}
+                        : source === "multisig"
+                          ? "Paste your watch-only output descriptor."
+                          : "Paste your extended public key to track this wallet."}
                   </DialogDescription>
                 </div>
               </div>
@@ -279,9 +290,9 @@ export function AddWalletDialog({ open, onOpenChange, onAdded }: AddWalletDialog
                 </Button>
               ) : null}
 
-              {!isConnected && source === "manual" ? (
+              {!isConnected && (source === "manual" || source === "multisig") ? (
                 <div className="space-y-2">
-                  <Label htmlFor="xpub">Extended public key</Label>
+                  <Label htmlFor="xpub">{source === "multisig" ? "Output descriptor" : "Extended public key"}</Label>
                   <textarea
                     id="xpub"
                     className="min-h-28 w-full rounded-md border border-input bg-card px-3 py-2 text-sm"
@@ -289,9 +300,9 @@ export function AddWalletDialog({ open, onOpenChange, onAdded }: AddWalletDialog
                     onChange={(event) => {
                       const next = event.target.value;
                       setXpub(next);
-                      setConnectState(isValidXpub(next) ? "ready" : "idle");
+                      setConnectState(isValidKey(next, source) ? "ready" : "idle");
                     }}
-                    placeholder="xpub, zpub or ypub"
+                    placeholder={source === "multisig" ? "wsh(sortedmulti(2,xpub...))" : "xpub, zpub or ypub"}
                   />
                 </div>
               ) : null}

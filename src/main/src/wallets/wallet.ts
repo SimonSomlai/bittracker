@@ -1,5 +1,6 @@
 import { getDatabase, type WalletRecord } from "../auth/db";
 import { getDerivationPath, validateXpub } from "../chain/xpub";
+import { parseMultisigDescriptor } from "../chain/multisig";
 
 export function toWalletDto(row: WalletRecord) {
   return {
@@ -8,6 +9,7 @@ export function toWalletDto(row: WalletRecord) {
     xpub: row.xpub,
     derivationPath: row.derivation_path,
     source: row.source,
+    kind: row.kind,
     lastUsedIndex: row.last_used_index,
     lastSyncedHeight: row.last_synced_height,
     createdAt: row.created_at,
@@ -58,11 +60,24 @@ export function addWallet(payload: {
   name?: string;
   xpub: string;
   source: "ledger" | "trezor" | "manual";
+  kind?: "xpub" | "descriptor";
   derivationPath?: string;
 }) {
-  const validated = validateXpub(payload.xpub);
-  if (!validated.ok) {
-    return { ok: false as const, error: validated.error };
+  const kind = payload.kind ?? "xpub";
+  let validatedXpub = payload.xpub;
+  
+  if (kind === "xpub") {
+    const validated = validateXpub(payload.xpub);
+    if (!validated.ok) {
+      return { ok: false as const, error: validated.error };
+    }
+    validatedXpub = validated.xpub;
+  } else {
+    const parsed = parseMultisigDescriptor(payload.xpub);
+    if (!parsed.ok) {
+      return { ok: false as const, error: parsed.error };
+    }
+    validatedXpub = parsed.canonical;
   }
 
   const name = payload.name?.trim() || defaultWalletName(payload.source);
@@ -70,11 +85,11 @@ export function addWallet(payload: {
     const result = getDatabase()
       .prepare(
         `
-        INSERT INTO wallets (name, xpub, derivation_path, source)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO wallets (name, xpub, derivation_path, source, kind)
+        VALUES (?, ?, ?, ?, ?)
       `,
       )
-      .run(name, validated.xpub, payload.derivationPath ?? getDerivationPath(), payload.source);
+      .run(name, validatedXpub, payload.derivationPath ?? getDerivationPath(), payload.source, kind);
     const wallet = getDatabase()
       .prepare("SELECT * FROM wallets WHERE id = ?")
       .get(result.lastInsertRowid) as WalletRecord;
@@ -85,7 +100,7 @@ export function addWallet(payload: {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to add wallet";
     if (message.includes("UNIQUE")) {
-      return { ok: false as const, error: "This xpub is already added" };
+      return { ok: false as const, error: "This wallet is already added" };
     }
     return { ok: false as const, error: message };
   }

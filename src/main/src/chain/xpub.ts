@@ -7,7 +7,7 @@ import bs58check from "bs58check";
 const bip32 = BIP32Factory(ecc);
 export const GAP_LIMIT = 20;
 
-export { getDerivationPath };
+export { getDerivationPath, normalizeXpub };
 
 const SLIP132_PUBLIC_VERSIONS = new Map<number, number>([
   [0x0488b21e, 0x0488b21e], // xpub
