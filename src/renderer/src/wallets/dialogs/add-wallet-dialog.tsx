@@ -76,13 +76,6 @@ const METHOD_GROUPS: MethodGroup[] = [
       },
     ],
   },
-  {
-    id: "multisig",
-    label: "Multisig",
-    description: "Watch-only multisig",
-    namePlaceholder: "My multisig",
-    imageSrc: "/wallets/xpub.png",
-  },
 ];
 
 const WALLET_METHODS: WalletMethod[] = METHOD_GROUPS.flatMap((group) => group.methods);
@@ -321,7 +314,9 @@ export function AddWalletDialog({ open, onOpenChange, onAdded }: AddWalletDialog
 
               {!isConnected && (source === "manual" || source === "multisig") ? (
                 <div className="space-y-2">
-                  <Label htmlFor="xpub">{source === "multisig" ? "Output descriptor" : "Extended public key"}</Label>
+                  <Label htmlFor="xpub">
+                    {source === "multisig" ? "Output descriptor" : "Extended public key"}
+                  </Label>
                   <textarea
                     id="xpub"
                     className="min-h-28 w-full rounded-md border border-input bg-card px-3 py-2 text-sm"
@@ -331,7 +326,9 @@ export function AddWalletDialog({ open, onOpenChange, onAdded }: AddWalletDialog
                       setXpub(next);
                       setConnectState(isValidKey(next, source) ? "ready" : "idle");
                     }}
-                    placeholder={source === "multisig" ? "wsh(sortedmulti(2,xpub...))" : "xpub, zpub or ypub"}
+                    placeholder={
+                      source === "multisig" ? "wsh(sortedmulti(2,xpub...))" : "xpub, zpub or ypub"
+                    }
                   />
                 </div>
               ) : null}
