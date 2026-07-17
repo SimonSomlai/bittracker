@@ -11,6 +11,9 @@ export const electronExternals = [
   "better-sqlite3-multiple-ciphers",
   "@ledgerhq/hw-transport-node-hid",
   "@ledgerhq/hw-app-btc",
+  // Optional Ledger integration inside @bitcoinerlab/descriptors that we never
+  // invoke; not installed, so keep it external instead of bundling it.
+  "@ledgerhq/ledger-bitcoin",
   "@trezor/connect",
   "bip32",
   "tiny-secp256k1",

@@ -34,6 +34,7 @@
     "postinstall": "npm_config_target=39.8.1 npm_config_arch=arm64 npm_config_target_arch=arm64 npm_config_disturl=https://electronjs.org/headers npm_config_runtime=electron pnpm rebuild better-sqlite3-multiple-ciphers tiny-secp256k1 argon2 usb node-hid"
   },
   "dependencies": {
+    "@bitcoinerlab/descriptors": "3.1.7",
     "@ledgerhq/hw-app-btc": "11.2.1",
     "@ledgerhq/hw-transport-node-hid": "6.29.5",
     "@trezor/connect": "9.7.3",

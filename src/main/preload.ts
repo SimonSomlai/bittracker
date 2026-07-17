@@ -85,6 +85,7 @@ const walletsApi = {
     name?: string;
     xpub: string;
     source: "ledger" | "trezor" | "manual";
+    kind?: "xpub" | "descriptor";
     derivationPath?: string;
   }) => ipcRenderer.invoke("wallet:add", payload),
   listWallets: () => ipcRenderer.invoke("wallet:list"),

@@ -29,10 +29,20 @@ const DEFAULT_SOURCE_LABELS = {
   manual: "Xpub",
 } as const;
 
-function defaultWalletName(source: keyof typeof DEFAULT_SOURCE_LABELS) {
+function defaultWalletName(
+  source: keyof typeof DEFAULT_SOURCE_LABELS,
+  kind: "xpub" | "descriptor",
+) {
+  if (kind === "descriptor") {
+    const row = getDatabase()
+      .prepare("SELECT COUNT(*) AS count FROM wallets WHERE kind = 'descriptor'")
+      .get() as { count: number };
+    return `Multisig ${row.count + 1}`;
+  }
+
   const label = DEFAULT_SOURCE_LABELS[source];
   const row = getDatabase()
-    .prepare("SELECT COUNT(*) AS count FROM wallets WHERE source = ?")
+    .prepare("SELECT COUNT(*) AS count FROM wallets WHERE source = ? AND kind = 'xpub'")
     .get(source) as { count: number };
   return `${label} ${row.count + 1}`;
 }
@@ -77,10 +87,10 @@ export function addWallet(payload: {
     if (!parsed.ok) {
       return { ok: false as const, error: parsed.error };
     }
-    validatedXpub = parsed.canonical;
+    validatedXpub = parsed.descriptor;
   }
 
-  const name = payload.name?.trim() || defaultWalletName(payload.source);
+  const name = payload.name?.trim() || defaultWalletName(payload.source, kind);
   try {
     const result = getDatabase()
       .prepare(
