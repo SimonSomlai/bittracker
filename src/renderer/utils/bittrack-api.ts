@@ -262,6 +262,7 @@ export interface BittrackApi {
     name?: string;
     xpub: string;
     source: WalletSource;
+    kind?: "xpub" | "descriptor";
     derivationPath?: string;
   }) => Promise<{ ok: boolean; wallet?: Wallet; error?: string }>;
   listWallets: () => Promise<Wallet[]>;

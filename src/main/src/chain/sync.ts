@@ -3,15 +3,13 @@ import type { BrowserWindow } from "electron";
 import { EsploraClient, EsploraRateLimitError, fetchCachedTx, type EsploraTx } from "./esplora";
 import { inputOutpoints, pickRbfWinner, serializeOutpoints, sharesInputOutpoints } from "./rbf";
 import { deriveWalletAddress, GAP_LIMIT } from "./xpub";
-import { deriveMultisigAddress, parseMultisigDescriptor } from "./multisig";
+import { deriveMultisigAddress } from "./multisig";
 import { rotateUntilNewIp } from "../net/tor";
-import { WalletRecord } from "../auth/db";
 
 function deriveAddressForWallet(wallet: WalletRecord, chain: 0 | 1, index: number) {
   if (wallet.kind === "descriptor") {
-    const parsed = parseMultisigDescriptor(wallet.xpub);
-    if (!parsed.ok) throw new Error(parsed.error);
-    return deriveMultisigAddress(parsed.parsed, chain, index);
+    // wallet.xpub holds the descriptor for multisig wallets.
+    return deriveMultisigAddress(wallet.xpub, chain, index);
   }
   return deriveWalletAddress(wallet.xpub, chain, index);
 }

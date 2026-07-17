@@ -1,80 +1,40 @@
-import * as bitcoin from "bitcoinjs-lib";
-import { BIP32Factory } from "bip32";
-import * as ecc from "tiny-secp256k1";
+import { Output } from "@bitcoinerlab/descriptors";
 import { getBitcoinNetwork } from "./network";
-import { normalizeXpub } from "./xpub";
 
-const bip32 = BIP32Factory(ecc);
+const CHECKSUM_RE = /#[a-z0-9]{8}$/i;
+const MULTIPATH_RE = /<\d+;\d+>/;
 
-export interface ParsedMultisigDescriptor {
-  scriptType: "p2wsh" | "p2sh";
-  threshold: number;
-  sorted: boolean;
-  keys: Array<{
-    xpub: string;
-    pathTemplate: string;
-  }>;
+// Strip the optional checksum and rewrite a single receive/change wildcard
+// (/0/* or /1/*) into a BIP389 multipath <0;1>/* so one stored descriptor
+// derives both the receive and change branches.
+function normalizeDescriptor(input: string): string {
+  const stripped = input.trim().replace(CHECKSUM_RE, "");
+  if (MULTIPATH_RE.test(stripped)) return stripped;
+  return stripped.replace(/\/[01]\/\*/g, "/<0;1>/*");
+}
+
+function buildOutput(descriptor: string, chain: 0 | 1, index: number) {
+  const network = getBitcoinNetwork();
+  // For a multipath descriptor `change` selects the branch: 0 = receive, 1 = change.
+  return MULTIPATH_RE.test(descriptor)
+    ? new Output({ descriptor, index, change: chain, network })
+    : new Output({ descriptor, index, network });
 }
 
 export function parseMultisigDescriptor(input: string):
-  | { ok: true; parsed: ParsedMultisigDescriptor; canonical: string }
+  | { ok: true; descriptor: string }
   | { ok: false; error: string } {
+  const descriptor = normalizeDescriptor(input);
+  if (!descriptor) return { ok: false, error: "Descriptor is required" };
   try {
-    const trimmed = input.trim();
-    // Simplified parsing for watch-only multisig (wsh/sh, multi/sortedmulti)
-    const match = trimmed.match(/^(wsh|sh)\((sortedmulti|multi)\((\d+),(.+)\)\)$/i);
-    if (!match) return { ok: false, error: "Unsupported descriptor format" };
-
-    const [, wrapper, multiType, thresholdStr, keysStr] = match;
-    const threshold = parseInt(thresholdStr);
-    const sorted = multiType === "sortedmulti";
-    const keysRaw = keysStr.split(",");
-    
-    const keys = keysRaw.map(k => {
-      // Basic extraction: assumes xpub/path format
-      const parts = k.split("/");
-      const xpub = normalizeXpub(parts[0]);
-      const pathTemplate = parts.slice(1).join("/");
-      return { xpub, pathTemplate };
-    });
-
-    // Validate threshold
-    if (threshold < 1 || threshold > keys.length) {
-      return { ok: false, error: "Invalid threshold" };
-    }
-
-    const canonical = `${wrapper}(${multiType}(${threshold},${keys.map(k => `${k.xpub}/${k.pathTemplate}`).join(",")}))`;
-    return { 
-      ok: true, 
-      parsed: { scriptType: wrapper === "wsh" ? "p2wsh" : "p2sh", threshold, sorted, keys }, 
-      canonical 
-    };
-  } catch (e) {
-    return { ok: false, error: "Parsing failed" };
+    buildOutput(descriptor, 0, 0).getAddress();
+    return { ok: true, descriptor };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid descriptor";
+    return { ok: false, error: message.replace(/^Error:\s*/i, "") };
   }
 }
 
-export function deriveMultisigAddress(
-  parsed: ParsedMultisigDescriptor, chain: 0 | 1, index: number
-): string {
-  const network = getBitcoinNetwork();
-  const pubkeys = parsed.keys.map(k => {
-    const node = bip32.fromBase58(k.xpub, network);
-    // Derivation logic: simple path handling
-    const child = node.derive(chain).derive(index);
-    return Buffer.from(child.publicKey);
-  });
-
-  if (parsed.sorted) {
-    pubkeys.sort(Buffer.compare);
-  }
-
-  const redeem = bitcoin.payments.p2ms({ m: parsed.threshold, pubkeys, network });
-  
-  const payment = parsed.scriptType === "p2wsh" 
-    ? bitcoin.payments.p2wsh({ redeem, network })
-    : bitcoin.payments.p2sh({ redeem: bitcoin.payments.p2wsh({ redeem, network }), network });
-
-  if (!payment.address) throw new Error("Failed to derive address");
-  return payment.address;
+export function deriveMultisigAddress(descriptor: string, chain: 0 | 1, index: number): string {
+  return buildOutput(descriptor, chain, index).getAddress();
 }

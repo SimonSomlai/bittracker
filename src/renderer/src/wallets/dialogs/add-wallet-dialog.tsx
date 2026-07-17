@@ -25,43 +25,60 @@ type ConnectState = "idle" | "connecting" | "ready";
 type Step = "pick" | "details";
 
 type WalletMethod = {
-  id: WalletSource;
+  id: WalletSource | "multisig";
   label: string;
   description: string;
   namePlaceholder: string;
   imageSrc: string;
 };
 
-const WALLET_METHODS: WalletMethod[] = [
+type MethodGroup = {
+  title: string;
+  methods: WalletMethod[];
+};
+
+const METHOD_GROUPS: MethodGroup[] = [
   {
-    id: "ledger",
-    label: "Ledger",
-    description: "Nano & Stax",
-    namePlaceholder: "My Ledger",
-    imageSrc: "/wallets/ledger.svg",
+    title: "Single",
+    methods: [
+      {
+        id: "ledger",
+        label: "Ledger",
+        description: "Nano & Stax",
+        namePlaceholder: "My Ledger",
+        imageSrc: "/wallets/ledger.svg",
+      },
+      {
+        id: "trezor",
+        label: "Trezor",
+        description: "Model One & T",
+        namePlaceholder: "My Trezor",
+        imageSrc: "/wallets/trezor.svg",
+      },
+      {
+        id: "manual",
+        label: "xpub/zpub/ypub",
+        description: "Paste a extended public key",
+        namePlaceholder: "My wallet",
+        imageSrc: "/wallets/xpub.png",
+      },
+    ],
   },
   {
-    id: "trezor",
-    label: "Trezor",
-    description: "Model One & T",
-    namePlaceholder: "My Trezor",
-    imageSrc: "/wallets/trezor.svg",
-  },
-  {
-    id: "manual",
-    label: "Xpub/Zpub/Ypub",
-    description: "Paste a watch key",
-    namePlaceholder: "My wallet",
-    imageSrc: "/wallets/xpub.png",
-  },
-  {
-    id: "multisig",
-    label: "Multisig",
-    description: "Watch-only multisig",
-    namePlaceholder: "My multisig",
-    imageSrc: "/wallets/xpub.png",
+    title: "Multisig",
+    methods: [
+      {
+        id: "multisig",
+        label: "Multisig",
+        description: "Paste a output descriptor",
+        namePlaceholder: "My multisig",
+        imageSrc: "/wallets/xpub.png",
+      },
+    ],
   },
 ];
+
+const WALLET_METHODS: WalletMethod[] = METHOD_GROUPS.flatMap((group) => group.methods);
 
 function methodFor(source: WalletSource | "multisig") {
   return WALLET_METHODS.find((method) => method.id === source) ?? WALLET_METHODS[0];
@@ -94,7 +111,7 @@ export function AddWalletDialog({ open, onOpenChange, onAdded }: AddWalletDialog
     setSaving(false);
   }
 
-  function pickMethod(method: WalletSource) {
+  function pickMethod(method: WalletSource | "multisig") {
     setSource(method);
     setXpub("");
     setConnectState("idle");
@@ -190,31 +207,36 @@ export function AddWalletDialog({ open, onOpenChange, onAdded }: AddWalletDialog
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid grid-cols-3 gap-3">
-              {WALLET_METHODS.map(({ id, label, description, imageSrc }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => pickMethod(id)}
-                  className={cn(
-                    "window-no-drag flex flex-col items-center gap-2 rounded-xl border bg-card p-3 text-center transition-colors",
-                    "hover:border-primary/40 hover:bg-muted/30",
-                  )}
-                >
-                  <div className="flex h-28 w-full items-center justify-center rounded-lg bg-muted/40 p-2">
-                    <img
-                      src={imageSrc}
-                      alt={label}
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  </div>
-                  <div className="space-y-0.5">
-                    <div className="text-sm font-medium">{label}</div>
-                    <div className="text-xs text-muted-foreground">{description}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
+            {METHOD_GROUPS.map((group) => (
+              <div key={group.title} className="space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground">{group.title}</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  {group.methods.map(({ id, label, description, imageSrc }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => pickMethod(id)}
+                      className={cn(
+                        "window-no-drag flex flex-col items-center gap-2 rounded-xl border bg-card p-3 text-center transition-colors",
+                        "hover:border-primary/40 hover:bg-muted/30",
+                      )}
+                    >
+                      <div className="flex h-28 w-full items-center justify-center rounded-lg bg-muted/40 p-2">
+                        <img
+                          src={imageSrc}
+                          alt={label}
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="text-sm font-medium">{label}</div>
+                        <div className="text-xs text-muted-foreground">{description}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </>
         ) : (
           <>
