@@ -76,6 +76,13 @@ const METHOD_GROUPS: MethodGroup[] = [
       },
     ],
   },
+  {
+    id: "multisig",
+    label: "Multisig",
+    description: "Watch-only multisig",
+    namePlaceholder: "My multisig",
+    imageSrc: "/wallets/xpub.png",
+  },
 ];
 
 const WALLET_METHODS: WalletMethod[] = METHOD_GROUPS.flatMap((group) => group.methods);

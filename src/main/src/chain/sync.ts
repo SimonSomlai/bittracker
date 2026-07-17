@@ -191,7 +191,7 @@ function mergeAddressHistory(
 }
 
 const PHASE1_CONCURRENCY = 10; // concurrent address fetches for known address range
-const SCAN_BATCH_SIZE = 5;     // indexes fetched in parallel during gap-limit scan
+const SCAN_BATCH_SIZE = 5; // indexes fetched in parallel during gap-limit scan
 
 async function discoverWalletActivity(
   wallet: WalletRecord,
@@ -211,12 +211,12 @@ async function discoverWalletActivity(
     type AddrEntry = { address: string; addressIndex: number };
     const addrs: AddrEntry[] = [];
     for (let idx = 0; idx <= wallet.last_used_index; idx++) {
-        for (const chain of [0, 1] as const) {
-          const address = deriveAddressForWallet(wallet, chain, idx);
-          walletAddresses.push({ address, addressIndex: idx });
-          addrs.push({ address, addressIndex: idx });
-        }
+      for (const chain of [0, 1] as const) {
+        const address = deriveAddressForWallet(wallet, chain, idx);
+        walletAddresses.push({ address, addressIndex: idx });
+        addrs.push({ address, addressIndex: idx });
       }
+    }
     for (let i = 0; i < addrs.length; i += PHASE1_CONCURRENCY) {
       const chunk = addrs.slice(i, i + PHASE1_CONCURRENCY);
       const results = await Promise.all(
@@ -332,11 +332,16 @@ export async function syncWallets() {
     });
 
     try {
-      const discovered = await discoverWalletActivity(wallet, client, knownTxids, (index, height) => {
-        highestIndex = index;
-        highestHeight = height;
-        updateWallet.run(index, height, wallet.id);
-      });
+      const discovered = await discoverWalletActivity(
+        wallet,
+        client,
+        knownTxids,
+        (index, height) => {
+          highestIndex = index;
+          highestHeight = height;
+          updateWallet.run(index, height, wallet.id);
+        },
+      );
       walletAddresses = discovered.walletAddresses;
       txMeta = discovered.txMeta;
       highestIndex = discovered.highestIndex;
