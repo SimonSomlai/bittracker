@@ -22,7 +22,7 @@ const SLIP132_PUBLIC_VERSIONS = new Map<number, number>([
   [0x02575483, 0x043587cf], // Vpub
 ]);
 
-function convertVariantXpubToStandard(xpub: string) {
+function normalizeXpub(xpub: string) {
   const trimmed = xpub.trim();
 
   try {
@@ -39,10 +39,6 @@ function convertVariantXpubToStandard(xpub: string) {
   } catch {
     return trimmed;
   }
-}
-
-function normalizeXpub(xpub: string) {
-  return convertVariantXpubToStandard(xpub);
 }
 
 export function validateXpub(xpub: string) {

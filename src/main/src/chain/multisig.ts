@@ -1,14 +1,16 @@
 import { Output } from "@bitcoinerlab/descriptors";
 import { getBitcoinNetwork } from "./network";
+import { normalizeXpub } from "./xpub";
 
 const CHECKSUM_RE = /#[a-z0-9]{8}$/i;
 const MULTIPATH_RE = /<\d+;\d+>/;
-
-// Strip the optional checksum and rewrite a single receive/change wildcard
-// (/0/* or /1/*) into a BIP389 multipath <0;1>/* so one stored descriptor
-// derives both the receive and change branches.
+const XKEY_RE = /[a-zA-Z]pub[1-9A-HJ-NP-Za-km-z]{79,108}/g;
 function normalizeDescriptor(input: string): string {
-  const stripped = input.trim().replace(CHECKSUM_RE, "");
+  const stripped = input
+    .trim()
+    .replace(CHECKSUM_RE, "")
+    .replace(XKEY_RE, (key) => normalizeXpub(key));
+
   if (MULTIPATH_RE.test(stripped)) return stripped;
   return stripped.replace(/\/[01]\/\*/g, "/<0;1>/*");
 }
@@ -21,9 +23,9 @@ function buildOutput(descriptor: string, chain: 0 | 1, index: number) {
     : new Output({ descriptor, index, network });
 }
 
-export function parseMultisigDescriptor(input: string):
-  | { ok: true; descriptor: string }
-  | { ok: false; error: string } {
+export function parseMultisigDescriptor(
+  input: string,
+): { ok: true; descriptor: string } | { ok: false; error: string } {
   const descriptor = normalizeDescriptor(input);
   if (!descriptor) return { ok: false, error: "Descriptor is required" };
   try {
